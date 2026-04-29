@@ -20,7 +20,7 @@ A JavaScript reimplementation of SpikeyDragoon’s Cross-Ark-Chat for ARK cluste
 Full support for clusters hosted on the same machine
 
 > [!NOTE]
-> Multi-machine/network clusters should work in theory, but have not been extensively tested
+> Multi-machine/network clusters should work in theory, but have not been extensively tested<br>
 > If attempting multi-machine/network cross chat, adjust the `pollInterval` setting to a higher value
 
 ### ARK: Survival Ascended
