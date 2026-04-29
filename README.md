@@ -146,18 +146,14 @@ Restarts the entire CrossArkChat process.
 
 # CrossArkChat.js vs Cross-Ark-Chat
 
-## CrossArkChat.js
-
-- JavaScript reimplementation, fully open source
-- Generally more responsive in testing
-- Cleaner, more intuitive configuration
-- Same resource usage as Cross-Ark-Chat
-
-## SpikeyDragoon's Cross-Ark-Chat
-
-- Time proven that it works
-- Highly customizable
-- Configuration can be harder to understand
+| Feature           | CrossArkChat.js | Cross-Ark-Chat |
+| ----------------- | --------------- | -------------- |
+| Cross Server Chat | Yes             | Yes            |
+| Discord Relay     | Yes             | Yes            |
+| Tribe Logs        | Yes             | Yes            |
+| Hot Reload        | Yes             | No             |
+| Open Source       | Yes             | No             |
+| Easier Config     | Yes             | ??             |
 
 ---
 
