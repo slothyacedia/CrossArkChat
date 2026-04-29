@@ -63,7 +63,7 @@ Edit your:
 
 If you're unsure how to configure it, see:
 
-https://github.com/slothyacedia/CrossArkChat/blob/main/config_explained.js
+https://github.com/slothyacedia/CrossArkChat/blob/main/CrossArkChat/config_explained.js
 
 ---
 

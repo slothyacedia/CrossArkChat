@@ -38,7 +38,8 @@ module.exports = {
     },
   },
   formats: {
-    /* Available Placeholders:
+    /*
+    Available Placeholders:
     Server Name / Id: {name}, {serverName}, {serverId}, {map}
     Player Name: {player}, {user}
     Tribe Name: {tribeName}
