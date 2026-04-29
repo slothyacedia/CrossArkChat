@@ -1,0 +1,19 @@
+{
+  "name": "crossarkchat.js",
+  "version": "3.0.0",
+  "description": "ARK Survival Evolved Cluster Chat w/ Discord Integration",
+  "main": "CrossArkChat.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node CrossArkChat.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.0",
+    "dotenv": "^16.4.5",
+    "gamedig": "^5.3.2",
+    "rcon-client": "^4.2.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
