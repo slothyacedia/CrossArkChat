@@ -15,14 +15,17 @@ A JavaScript reimplementation of SpikeyDragoon’s Cross-Ark-Chat for ARK cluste
 
 ## Compatibility
 
+### Networking
+
 Full support for clusters hosted on the same machine
 
 > [!NOTE]
-> Multi-machine / multi-network clusters should work in theory, but have not been extensively tested
+> Multi-machine/network clusters should work in theory, but have not been extensively tested
+> If attempting multi-machine/network cross chat, adjust the `pollInterval` setting to a higher value
 
 ### ARK: Survival Ascended
 
-This may also work with **ARK: Survival Ascended** and could potentially allow chat bridging between **ASE** and **ASA**
+This may also work with **ARK: Survival Ascended** and could potentially allow cross chat between **ASE** and **ASA**
 
 > [!NOTE]
 > This depends on Wildcard not changing RCON response formats
