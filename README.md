@@ -146,14 +146,15 @@ Restarts the entire CrossArkChat process.
 
 # CrossArkChat.js vs Cross-Ark-Chat
 
-| Feature           | CrossArkChat.js | Cross-Ark-Chat |
-| ----------------- | --------------- | -------------- |
-| Cross Server Chat | Yes             | Yes            |
-| Discord Relay     | Yes             | Yes            |
-| Tribe Logs        | Yes             | Yes            |
-| Hot Reload        | Yes             | No             |
-| Open Source       | Yes             | No             |
-| Easier Config     | Yes             | ??             |
+| Feature              | CrossArkChat.js | Cross-Ark-Chat |
+| -------------------- | --------------- | -------------- |
+| Cross Server Chat    | Yes             | Yes            |
+| Discord Relay        | Yes             | Yes            |
+| Tribe Logs           | Yes             | Yes            |
+| Hot Reload           | Yes             | No             |
+| Open Source          | Yes             | No             |
+| Easier Config        | Yes             | No             |
+| More Flexible Config | No              | Yes            |
 
 ---
 
