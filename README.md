@@ -7,7 +7,7 @@ A JavaScript reimplementation of SpikeyDragoon’s Cross-Ark-Chat for ARK cluste
 - Cross-server global chat for clustered ARK servers
 - Discord chat relay support
 - Tribe log forwarding
-- Hot config reloading (`reloadconfig`)
+- Hot config reloading (`reload`)
 - Full process restart command (`restart`)
 - Optional automatic plugin loading
 - Open source and fully customizable
@@ -37,7 +37,7 @@ Download the latest version:
 
 https://github.com/slothyacedia/CrossArkChat/archive/refs/heads/main.zip
 
-Extract the archive and open the `CrossArkChat.js` folder.
+Extract the archive and open the `CrossArkChat` folder.
 
 ---
 
@@ -90,7 +90,8 @@ If launching for the first time, open a terminal in the folder and do:
 npm install
 ```
 
-To start `CrossArkChat.js`, open a terminal and do:
+To start `CrossArkChat.js`, open a terminal in the folder and do:
+
 ```text
 node CrossArkChat.js
 ```
@@ -111,7 +112,7 @@ If not, send a chat message in-game and verify it appears on other servers
 
 # Commands
 
-CrossArkChat.js comes with 2 commands on the discord bot
+`CrossArkChat.js` comes with 2 commands on the discord bot
 
 Default prefix:
 
@@ -122,7 +123,7 @@ cac.
 ## Reload Config
 
 ```text
-cac.reload (.rc, .reloadconfig)
+cac.reload (aliases: cac.rc, cac.reloadconfig)
 ```
 
 Reloads configuration without restarting the program.
