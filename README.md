@@ -22,6 +22,7 @@ Full support for clusters hosted on the same machine
 > [!NOTE]
 > Multi-machine/network clusters should work in theory, but have not been extensively tested
 
+> [!NOTE]
 > If attempting multi-machine/network cross chat, adjust the `pollInterval` setting to a higher value
 
 ### ARK: Survival Ascended

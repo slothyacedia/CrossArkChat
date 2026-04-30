@@ -20,9 +20,18 @@ module.exports = {
     },
   ],
   ark: {
-    pollInterval: 100, // Polling interval in milliseconds
+    pollChatInterval: 100, // Chat polling interval in ms
+    pollPlayersInterval: 100, // Player polling interval in ms
+    commandTimeout: 1000, // Timeout a command after x ms
+    chatCommand: "serverchat", // Command used to chat
     essentialPlugins: ["Permissions", "PlayerUtilities", "DinoUtilities", "ExtendedRcon", "UnicodeRcon", "RewardsEvolved"],
-    // Essential plugins that will be loaded on connect (optional)
+    // Plugins that will be loaded on connect
+    ignoredResponses: ["Server received, But no response!!", "Deactivated", "Force respawning Wild Dinos!"],
+    // RCON responses that will be ignored and not processed
+    ignoredResponsePrefixes: ["AdminCmd: ", "SERVER: ", "SpawnDino_DS"],
+    // RCON response prefixes that will result in the response being ignored and not processed
+    tribeLogsRegex: /^Tribe\s+(.+?),\s+ID\s+(\d+):\s+Day\s+(\d+),\s+([\d:]+):\s+<RichColor Color="([^"]+)">([\s\S]+?)<\/?>\)?$/,
+    // Tribe log detection regex (DO NOT CHANGE IF YOU'RE UNSURE)
   },
   discord: {
     enabled: true, // Controls if discord is in the loop
@@ -33,10 +42,10 @@ module.exports = {
     channels: {
       // Channel ids for which messages are sent to
       chat: "",
-      join: "",
-      leave: "",
+      join: "", // Defaults to the chat channel
+      leave: "", // Defaults to the chat channel
       tribeLogs: "",
-      leftovers: "",
+      leftovers: "", // Defaults to the tribe logs channel
     },
   },
   formats: {

@@ -20,8 +20,14 @@ module.exports = {
     },
   ],
   ark: {
-    pollInterval: 100,
+    pollChatInterval: 100,
+    pollPlayersInterval: 100,
+    commandTimeout: 1000,
+    chatCommand: "serverchat",
     essentialPlugins: ["Permissions", "PlayerUtilities", "DinoUtilities", "ExtendedRcon", "UnicodeRcon", "RewardsEvolved"],
+    ignoredResponses: ["Server received, But no response!!", "Deactivated", "Force respawning Wild Dinos!"],
+    ignoredResponsePrefixes: ["AdminCmd: ", "SERVER: ", "SpawnDino_DS"],
+    tribeLogsRegex: /^Tribe\s+(.+?),\s+ID\s+(\d+):\s+Day\s+(\d+),\s+([\d:]+):\s+<RichColor Color="([^"]+)">([\s\S]+?)<\/?>\)?$/,
   },
   discord: {
     enabled: true,

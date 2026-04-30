@@ -5,7 +5,7 @@ const dotenv = require("dotenv")
 const { Rcon } = require("rcon-client")
 const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js")
 const { GameDig } = require("gamedig")
-const CACJSversion = "v1.0.0-beta10"
+const CACJSversion = "v1.0.0-beta13"
 const processId = process.pid.toString()
 process.title = "CrossArkChat.js"
 
@@ -205,11 +205,11 @@ let chatLogTimer = null
 let chatLogFlushTiming = 0
 
 const typeExclusions = ["tribeLogs", "leftovers"]
-function cachePacket(packet, index, prepend = false) {
-  cache[index] ??= {}
-  cache[index].messages ??= []
-  if (prepend) cache[index].messages.unshift(packet)
-  else cache[index].messages.push(packet)
+function cachePacket(packet, cacheKey, prepend = false) {
+  cache[cacheKey] ??= {}
+  cache[cacheKey].messages ??= []
+  if (prepend) cache[cacheKey].messages.unshift(packet)
+  else cache[cacheKey].messages.push(packet)
   saveCache()
 }
 
@@ -241,7 +241,7 @@ function queuePacket(packet) {
     channel.send(chunk).catch(() => {
       if (!failed) {
         failed = true
-        cachePacket(packet, "Discord")
+        cachePacket(packet, "Discord", true)
         if (!chatLogTimer) chatLogTimer = setTimeout(sendChatLogs, 2000)
       }
     })
@@ -440,15 +440,27 @@ function createArkAgent(server) {
   let pollPlayersFailCount = 0
   let retryDelay = 5000
   const cacheKey = server.name
+  let commandTimeout = Number(config.ark.commandTimeout) || 5000
 
   // -------------------------
   // SAFE SEND WRAPPER
   // -------------------------
+  function withTimeout(promise, ms = 5000) {
+    let timer
+
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error("RCON_TIMEOUT")), ms)
+    })
+
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
+  }
+
   async function send(command) {
     if (!rcon) return null
 
     try {
-      const res = await rcon.send(command)
+      const res = await withTimeout(rcon.send(command), commandTimeout)
+
       return res || null
     } catch {
       return null
@@ -485,7 +497,7 @@ function createArkAgent(server) {
       while (queue.length && state === "CONNECTED") {
         const msg = queue[0]
 
-        const ok = await sendOk(`serverchat ${msg}`)
+        const ok = await sendOk(`${config.ark.chatCommand || "serverchat"} ${msg}`)
 
         if (!ok) break
 
@@ -605,16 +617,17 @@ function createArkAgent(server) {
   // POLLING
   // -------------------------
   function pollChat() {
+    let pollInterval = Number(config.ark.pollChatInterval) || 100
     if (chatPoller) clearTimeout(chatPoller)
 
     async function loop() {
       if (state !== "CONNECTED") {
-        chatPoller = setTimeout(loop, Number(config.ark.pollInterval) || 100)
+        chatPoller = setTimeout(loop, pollInterval)
         return
       }
 
       if (pollingChat) {
-        chatPoller = setTimeout(loop, Number(config.ark.pollInterval) || 100)
+        chatPoller = setTimeout(loop, pollInterval)
         return
       }
 
@@ -625,8 +638,8 @@ function createArkAgent(server) {
         if (response) {
           const lines = response.split("\n")
 
-          let ignoredLines = ["Server received, But no response!!", "Deactivated", "Force respawning Wild Dinos!"]
-          let ignoredPrefixes = ["AdminCmd: ", "SERVER: ", "SpawnDino_DS"]
+          let ignoredLines = config.ark.ignoredResponses || ["Server received, But no response!!"]
+          let ignoredPrefixes = config.ark.ignoredResponsePrefixes || ["SERVER: "]
 
           for (const raw of lines) {
             let line = stripLogEntryId(raw).trim()
@@ -638,7 +651,7 @@ function createArkAgent(server) {
         }
       } finally {
         pollingChat = false
-        chatPoller = setTimeout(loop, Number(config.ark.pollInterval) || 100)
+        chatPoller = setTimeout(loop, pollInterval)
       }
     }
 
@@ -646,10 +659,11 @@ function createArkAgent(server) {
   }
 
   function pollPlayers() {
+    let pollInterval = Number(config.ark.pollPlayersInterval) || 100
     if (playerPoller) clearTimeout(playerPoller)
 
     async function loop() {
-      playerPoller = setTimeout(loop, Number(config.ark.pollInterval) || 100)
+      playerPoller = setTimeout(loop, pollInterval)
 
       if (pollingPlayers) return
       pollingPlayers = true
@@ -677,10 +691,15 @@ function createArkAgent(server) {
               const match = line.match(/^(\d+)\.\s(.+),\s(\d+)$/)
               if (!match) continue
 
+              let [, index, name, steamId] = match
+
+              let existing = cache[cacheKey].players.find((player) => player.steamId === steamId)
+
               currentPlayers.push({
-                index: Number(match[1]) + 1,
-                name: match[2],
-                steamId: match[3],
+                index: Number(index) + 1,
+                name,
+                steamId,
+                joinTime: existing?.joinTime || Date.now(),
               })
             }
 
@@ -781,7 +800,11 @@ function createArkAgent(server) {
       return
     }
 
-    let tribeLog = line.match(/^Tribe\s+(.+?),\s+ID\s+(\d+):\s+Day\s+(\d+),\s+([\d:]+):\s+<RichColor Color="([^"]+)">([\s\S]+?)<\/?>\)?$/)
+    let tribeLogsRegex =
+      config.ark.tribeLogsRegex instanceof RegExp
+        ? config.ark.tribeLogsRegex
+        : /^Tribe\s+(.+?),\s+ID\s+(\d+):\s+Day\s+(\d+),\s+([\d:]+):\s+<RichColor Color="([^"]+)">([\s\S]+?)<\/?>\)?$/
+    let tribeLog = line.match(tribeLogsRegex)
     if (tribeLog) {
       let [, tribeName, tribeId, day, time, colorRaw, message] = tribeLog
       let color = null
@@ -874,7 +897,7 @@ function createArkAgent(server) {
   return {
     name: server.name,
     send: async (msg) => {
-      const ok = await sendOk(`serverchat ${msg}`)
+      const ok = await sendOk(`${config.ark.chatCommand || "serverchat"} ${msg}`)
       if (!ok) cacheMessage(msg)
     },
   }
@@ -889,7 +912,7 @@ function registerCommand(names, handler) {
   }
 }
 
-registerCommand(["reloadconfig", "reload", "rc"], async (message, arguments) => {
+registerCommand(["reload", "reloadconfig", "rc"], async (message, arguments) => {
   try {
     if (!(await isAdmin(message.author.id))) {
       throw new Error(`Not An Admin`)
@@ -906,7 +929,7 @@ registerCommand(["reloadconfig", "reload", "rc"], async (message, arguments) => 
   }
 })
 
-registerCommand("restart", async (message, arguments) => {
+registerCommand(["restart"], async (message, arguments) => {
   try {
     if (!(await isAdmin(message.author.id))) {
       throw new Error(`Not An Admin`)
@@ -924,6 +947,98 @@ registerCommand("restart", async (message, arguments) => {
     process.exit(0)
   } catch (err) {
     await message.reply(`Restart Failed, ${err.message}`)
+  }
+})
+
+registerCommand(["getplayerinfo", "gpi"], async (message, arguments) => {
+  try {
+    let query = arguments.join(" ").toLowerCase().trim()
+
+    if (!query) {
+      return message.reply("Please Provide A Player Name Or Steam ID")
+    }
+
+    let enabledServers = config.servers.filter((s) => s.enabled)
+
+    let serverPlayers = enabledServers.flatMap((server) => {
+      return (cache[server.name]?.players || []).map((player) => ({
+        ...player,
+        server,
+      }))
+    })
+
+    let matches = serverPlayers.filter((player) => player.name.toLowerCase().includes(query) || player.steamId.includes(query))
+
+    if (matches.length === 0) {
+      return message.reply("No Player Found")
+    }
+
+    let results = []
+
+    for (const player of matches) {
+      const server = player.server
+
+      let serverInfo
+      try {
+        serverInfo = await GameDig.query({
+          type: "ase",
+          host: server.ip,
+          port: server.queryPort,
+        })
+      } catch {
+        continue
+      }
+
+      let joinTime = player.joinTime || null
+      let sessionTime = joinTime ? Date.now() - joinTime : null
+
+      results.push({
+        name: player.name,
+        steamId: player.steamId,
+        server: server.name,
+        joinTime,
+        sessionTime,
+      })
+    }
+
+    if (results.length === 0) {
+      return message.reply("Player Exists In Cache But Server Query Failed")
+    }
+
+    function formatSessionTime(ms) {
+      if (!ms) return "Unknown"
+
+      let totalSeconds = Math.floor(ms / 1000)
+      let minutes = Math.floor(totalSeconds / 60)
+      let seconds = totalSeconds % 60
+      let hours = Math.floor(minutes / 60)
+      minutes = minutes % 60
+
+      if (hours > 0) {
+        return `${hours}h ${minutes}m ${seconds}s`
+      }
+
+      if (minutes > 0) {
+        return `${minutes}m ${seconds}s`
+      }
+
+      return `${seconds}s`
+    }
+
+    let reply = results
+      .map((result) => {
+        return `Player: ${result.name}\nSteam: ${result.steamId}\nServer: ${result.server}\nSession Time: ${formatSessionTime(result.sessionTime)}`
+      })
+      .join("\n\n")
+
+    if (results.length > 5) {
+      results = results.slice(0, 5)
+      reply += `\n\n-# More Than 5 Players Found, Try Limiting The Scope More`
+    }
+
+    return message.reply(reply)
+  } catch {
+    await message.reply(`Something Went Wrong...`)
   }
 })
 
@@ -989,9 +1104,10 @@ async function startDiscord() {
     for (const packet of pendingTribeLogs) queuePacket(packet)
   })
 
+  const prefix = config.discord.prefix || "cac."
   client.on("messageCreate", (message) => {
     if (message.channel.id !== config.discord.channels.chat || message.author.bot) return
-    if (message.content.toLowerCase().startsWith(config.discord.prefix.toLowerCase())) return
+    if (message.content.toLowerCase().startsWith(prefix.toLowerCase())) return
     let msgContent = message.content
     if (config.discord.stripEmojis) {
       msgContent = msgContent.replace(/<a?:([a-zA-Z0-9_]+):\d+>/g, ":$1:")
@@ -1011,9 +1127,7 @@ async function startDiscord() {
 
   client.on("messageCreate", async (message) => {
     if (message.author.bot) return
-
-    const prefix = config.discord.prefix || "!"
-    if (!message.content.startsWith(prefix)) return
+    if (!message.content.toLowerCase().startsWith(prefix.toLowerCase())) return
 
     const raw = message.content.slice(prefix.length).trim()
     const [cmd, ...args] = raw.split(/\s+/)
