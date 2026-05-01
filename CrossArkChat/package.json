@@ -1,6 +1,6 @@
 {
   "name": "crossarkchat.js",
-  "version": "3.0.0",
+  "version": "1.0.0",
   "description": "ARK Survival Evolved Cluster Chat w/ Discord Integration",
   "main": "CrossArkChat.js",
   "type": "commonjs",

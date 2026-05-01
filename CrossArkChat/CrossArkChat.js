@@ -19,7 +19,7 @@ fs.writeFileSync(path.join(__dirname, "PID.txt"), processId)
 
 // Config
 function loadConfig() {
-  console.log("[CrossArkChat] Loading config...")
+  console.log("[CrossArkChat] Loading Config...")
 
   if (fs.existsSync(path.join(__dirname, "config.js"))) {
     delete require.cache[require.resolve(path.join(__dirname, "config.js"))]
@@ -367,6 +367,7 @@ async function sendTribeLogs(force = false) {
     tribeLogTimer = null
   }
 }
+
 async function sendChatLogs(force = false) {
   try {
     if (!force) {
@@ -781,9 +782,9 @@ function createArkAgent(server) {
   // LINE PARSER
   // -------------------------
   function handleLine(line, source = "") {
-    // CHAT
     let metadata = {}
 
+    // Chats
     let chat = line.match(/^(.+?) \(([^()]+)\): (.+)$/)
     if (chat) {
       let [, , player, text] = chat
@@ -800,6 +801,7 @@ function createArkAgent(server) {
       return
     }
 
+    // Tribe logs
     let tribeLogsRegex =
       config.ark.tribeLogsRegex instanceof RegExp
         ? config.ark.tribeLogsRegex
@@ -834,7 +836,7 @@ function createArkAgent(server) {
       return
     }
 
-    // TRIBE LOGS (safe fallback)
+    // Leftovers
     handlePacket({
       id: `${server.name}-tribelog-${Date.now()}`,
       origin: server.name,
@@ -958,7 +960,7 @@ registerCommand(["getplayerinfo", "gpi"], async (message, arguments) => {
       return message.reply("Please Provide A Player Name Or Steam ID")
     }
 
-    let enabledServers = config.servers.filter((s) => s.enabled)
+    let enabledServers = config.servers.filter((server) => server.enabled)
 
     let serverPlayers = enabledServers.flatMap((server) => {
       return (cache[server.name]?.players || []).map((player) => ({

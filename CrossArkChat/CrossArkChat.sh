@@ -152,7 +152,7 @@ echo "Starting CrossArkChat.js..."
 while true; do
     if [ "$logging" -eq 1 ]; then
         mkdir -p logs
-        logFile="logs/$(date '+%Y-%m-%d_%H-%M-%S').log"
+        logFile="logs/$(date '+%y-%m-%d_%H%M').log"
         node CrossArkChat.js | tee -a "$logFile"
     else
         node CrossArkChat.js

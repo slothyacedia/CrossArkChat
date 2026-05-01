@@ -168,7 +168,7 @@ echo All Checks Passed, Starting CrossArkChat.js...
 
 if %logging% equ 1 (
   if not exist logs mkdir logs
-  for /f %%A in ('powershell -NoProfile -Command "Get-Date -Format dd-MMM-yy_HHmm_hh-mmtt"') do set "logStart=%%A"
+  for /f %%A in ('powershell -NoProfile -Command "Get-Date -Format yy-MM-dd_HHmm"') do set "logStart=%%A"
   set "logFile=logs\!logStart!.log"
   powershell -Command "node CrossArkChat.js | Tee-Object -FilePath '!logFile!' -Append"
 ) else (
