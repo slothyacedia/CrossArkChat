@@ -101,6 +101,12 @@ To start `CrossArkChat.js`, open a terminal in the folder and do:
 node CrossArkChat.js
 ```
 
+OR
+
+```text
+npm run start
+```
+
 ---
 
 ## 4. Verify Connection
@@ -125,6 +131,8 @@ Default prefix:
 cac.
 ```
 
+---
+
 ## Reload Config
 
 ```text
@@ -142,6 +150,8 @@ cac.restart
 ```
 
 Restarts the entire CrossArkChat process.
+
+---
 
 ## Get Player Info
 
