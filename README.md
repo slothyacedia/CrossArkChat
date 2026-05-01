@@ -136,7 +136,8 @@ cac.
 ## Reload Config
 
 ```text
-cac.reload (aliases: cac.rc, cac.reloadconfig)
+cac.reload
+aliases: cac.rc, cac.reloadconfig
 ```
 
 Reloads configuration without restarting the program.
@@ -156,7 +157,8 @@ Restarts the entire CrossArkChat process.
 ## Get Player Info
 
 ```text
-cac.getplayerinfo <steamName / steamId> (aliases: cac.gpi)
+cac.getplayerinfo <steamName / steamId>
+aliases: cac.gpi
 ```
 
 Get a player's info such as how long they've been connected and which server they're currently on.
