@@ -5,13 +5,13 @@ A JavaScript reimplementation of SpikeyDragoon’s Cross-Ark-Chat for ARK cluste
 ## Features
 
 - Cross-server global chat for clustered ARK servers
-- Discord chat relay support
+- Discord chat relay
 - Tribe log forwarding
 - Hot config reloading (`reload`)
 - Full process restart command (`restart`)
 - Optional automatic plugin loading
 - Open source and fully customizable
-- Lightweight and responsive
+- Responsive
 
 ## Compatibility
 
