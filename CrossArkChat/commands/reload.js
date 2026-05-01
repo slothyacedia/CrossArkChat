@@ -1,6 +1,6 @@
 module.exports = {
-  names: ["reload", "reloadconfig", "rc"],
-  async execute(message, args, cacApi) {
+  names: ["reload", "reloadconfig", "reloadcommands"],
+  async execute(message, cmd, args, cacApi) {
     let isAdmin = cacApi.isAdmin
     let config = cacApi.getConfig()
 
@@ -9,12 +9,38 @@ module.exports = {
         throw new Error(`Not An Admin`)
       }
 
-      cacApi.writeConfig(cacApi.loadConfig())
-      console.log(`[CrossArkChat] Config Reloaded By ${message.member.nickname}(${message.author.id})`)
+      let reloadType = (args[0] || "").toLowerCase()
+      if (!reloadType) {
+        if (cmd == "reloadconfig") {
+          reloadType = "config"
+        }
+        if (cmd == "reloadcommands") {
+          reloadType = "commands"
+        }
+      }
 
-      await message.reply(`Config Reload Success`)
+      switch (reloadType) {
+        case "config": {
+          cacApi.writeConfig(cacApi.loadConfig())
+          console.log(`[CrossArkChat] Config Reloaded By ${message.member.nickname}(${message.author.id})`)
+          await message.reply(`Config Reload Success`)
+          break
+        }
+
+        case "commands": {
+          cacApi.loadCommands()
+          console.log(`[CrossArkChat] Commands Reloaded By ${message.member.nickname}(${message.author.id})`)
+          await message.reply(`Commands Reload Success`)
+          break
+        }
+
+        default: {
+          await message.reply(`Please Do \`${config.discord.prefix}reload config\` Or \`${config.discord.prefix}reload commands\``)
+          break
+        }
+      }
     } catch (err) {
-      await message.reply(`Config Reload Failed, ${err.message}`)
+      await message.reply(`Reload Failed, ${err.message}`)
     }
   },
 }

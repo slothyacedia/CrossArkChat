@@ -1,6 +1,6 @@
 module.exports = {
   names: ["restart"],
-  async execute(message, args, cacApi) {
+  async execute(message, cmd, args, cacApi) {
     let isAdmin = cacApi.isAdmin
     let childProc = await cacApi.modMan.require("node:child_process")
 

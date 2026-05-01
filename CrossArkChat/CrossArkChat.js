@@ -927,6 +927,7 @@ function createArkAgent(server) {
 let discordCommands = new Map()
 
 async function loadCommands() {
+  discordCommands = new Map()
   let commandsPath = path.join(__dirname, "commands")
   let commandFiles = fs.readdirSync(commandsPath).filter((file) => file.toLowerCase().endsWith(".js"))
   for (let commandFile of commandFiles) {
@@ -935,8 +936,8 @@ async function loadCommands() {
     delete require.cache[require.resolve(filePath)]
     const command = require(filePath)
     let names = command.names
-    let handler = async (message, args) => {
-      return command.execute(message, args, cacApi)
+    let handler = async (message, cmd, args) => {
+      return command.execute(message, cmd, args, cacApi)
     }
     if (Array.isArray(names)) {
       names.forEach((name) => discordCommands.set(name.toLowerCase(), handler))
@@ -1044,7 +1045,7 @@ async function startDiscord() {
     if (!handler) return
 
     try {
-      await handler(message, args)
+      await handler(message, cmd, args)
     } catch (err) {}
   })
 
