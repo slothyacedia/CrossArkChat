@@ -5,7 +5,7 @@ const dotenv = require("dotenv")
 const { Rcon } = require("rcon-client")
 const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js")
 const { GameDig } = require("gamedig")
-const CACJSversion = "v1.0.0-beta13"
+const CACJSversion = "v1.0.0-beta14"
 const processId = process.pid.toString()
 process.title = "CrossArkChat.js"
 
@@ -439,6 +439,7 @@ function createArkAgent(server) {
   let pollingChat = false
   let pollingPlayers = false
   let pollPlayersFailCount = 0
+  let disconnectCount = 0
   let retryDelay = 5000
   const cacheKey = server.name
   let commandTimeout = Number(config.ark.commandTimeout) || 5000
@@ -520,6 +521,23 @@ function createArkAgent(server) {
     let serverConnectable = await isServerUp()
     if (serverConnectable == false) {
       state = "DISCONNECTED"
+      disconnectCount++
+      if (disconnectCount >= 5) {
+        let previousPlayers = cache[cacheKey].players
+        for (const player of previousPlayers) {
+          handlePacket({
+            id: `${server.name}-leave-${Date.now()}`,
+            origin: server.name,
+            type: "leave",
+            server: server.name,
+            player: player.name,
+            text: "",
+            source: "forced-offline",
+            metadata: { forced: true },
+          })
+        }
+        cache[cacheKey].players = []
+      }
       scheduleReconnect()
       return
     }
@@ -537,6 +555,7 @@ function createArkAgent(server) {
 
       state = "CONNECTED"
       retryDelay = 5000
+      disconnectCount = 0
 
       if (config.logging.rconStatus) console.log(`[${server.name}] RCON Connected`)
 
@@ -906,143 +925,29 @@ function createArkAgent(server) {
 }
 
 let discordCommands = new Map()
-function registerCommand(names, handler) {
-  if (Array.isArray(names)) {
-    names.forEach((name) => discordCommands.set(name.toLowerCase(), handler))
-  } else {
-    discordCommands.set(names.toLowerCase(), handler)
+
+async function loadCommands() {
+  let commandsPath = path.join(__dirname, "commands")
+  let commandFiles = fs.readdirSync(commandsPath).filter((file) => file.toLowerCase().endsWith(".js"))
+  for (let commandFile of commandFiles) {
+    const filePath = path.join(commandsPath, commandFile)
+
+    delete require.cache[require.resolve(filePath)]
+    const command = require(filePath)
+    let names = command.names
+    let handler = async (message, args) => {
+      return command.execute(message, args, cacApi)
+    }
+    if (Array.isArray(names)) {
+      names.forEach((name) => discordCommands.set(name.toLowerCase(), handler))
+    } else {
+      discordCommands.set(names.toLowerCase(), handler)
+    }
+    console.log(`[CrossArkChat] Loaded ${commandFile}`)
   }
 }
 
-registerCommand(["reload", "reloadconfig", "rc"], async (message, arguments) => {
-  try {
-    if (!(await isAdmin(message.author.id))) {
-      throw new Error(`Not An Admin`)
-    }
-
-    const fresh = loadConfig()
-    Object.keys(config).forEach((key) => delete config[key])
-    Object.assign(config, fresh)
-    console.log(`[CrossArkChat] Config Reloaded By ${message.member.nickname}(${message.author.id})`)
-
-    await message.reply(`Config Reload Success`)
-  } catch (err) {
-    await message.reply(`Config Reload Failed, ${err.message}`)
-  }
-})
-
-registerCommand(["restart"], async (message, arguments) => {
-  try {
-    if (!(await isAdmin(message.author.id))) {
-      throw new Error(`Not An Admin`)
-    }
-
-    console.log(`[CrossArkChat] Restart Requested By ${message.member.nickname}(${message.author.id})`)
-    await message.reply(`Restarting...`)
-    let startArgs = process.argv.slice(1)
-    let child = childProc.spawn(process.argv[0], startArgs, {
-      detached: true,
-      stdio: "inherit",
-    })
-    child.unref()
-    console.log(`[CrossArkChat] Restart Spawned, Exiting...`)
-    process.exit(0)
-  } catch (err) {
-    await message.reply(`Restart Failed, ${err.message}`)
-  }
-})
-
-registerCommand(["getplayerinfo", "gpi"], async (message, arguments) => {
-  try {
-    let query = arguments.join(" ").toLowerCase().trim()
-
-    if (!query) {
-      return message.reply("Please Provide A Player Name Or Steam ID")
-    }
-
-    let enabledServers = config.servers.filter((server) => server.enabled)
-
-    let serverPlayers = enabledServers.flatMap((server) => {
-      return (cache[server.name]?.players || []).map((player) => ({
-        ...player,
-        server,
-      }))
-    })
-
-    let matches = serverPlayers.filter((player) => player.name.toLowerCase().includes(query) || player.steamId.includes(query))
-
-    if (matches.length === 0) {
-      return message.reply("No Player Found")
-    }
-
-    let results = []
-
-    for (const player of matches) {
-      const server = player.server
-
-      let serverInfo
-      try {
-        serverInfo = await GameDig.query({
-          type: "ase",
-          host: server.ip,
-          port: server.queryPort,
-        })
-      } catch {
-        continue
-      }
-
-      let joinTime = player.joinTime || null
-      let sessionTime = joinTime ? Date.now() - joinTime : null
-
-      results.push({
-        name: player.name,
-        steamId: player.steamId,
-        server: server.name,
-        joinTime,
-        sessionTime,
-      })
-    }
-
-    if (results.length === 0) {
-      return message.reply("Player Exists In Cache But Server Query Failed")
-    }
-
-    function formatSessionTime(ms) {
-      if (!ms) return "Unknown"
-
-      let totalSeconds = Math.floor(ms / 1000)
-      let minutes = Math.floor(totalSeconds / 60)
-      let seconds = totalSeconds % 60
-      let hours = Math.floor(minutes / 60)
-      minutes = minutes % 60
-
-      if (hours > 0) {
-        return `${hours}h ${minutes}m ${seconds}s`
-      }
-
-      if (minutes > 0) {
-        return `${minutes}m ${seconds}s`
-      }
-
-      return `${seconds}s`
-    }
-
-    let reply = results
-      .map((result) => {
-        return `Player: ${result.name}\nSteam: ${result.steamId}\nServer: ${result.server}\nSession Time: ${formatSessionTime(result.sessionTime)}`
-      })
-      .join("\n\n")
-
-    if (results.length > 5) {
-      results = results.slice(0, 5)
-      reply += `\n\n-# More Than 5 Players Found, Try Limiting The Scope More`
-    }
-
-    return message.reply(reply)
-  } catch {
-    await message.reply(`Something Went Wrong...`)
-  }
-})
+loadCommands()
 
 // Authorisation Helper
 let botOwnerIds = null
@@ -1106,8 +1011,8 @@ async function startDiscord() {
     for (const packet of pendingTribeLogs) queuePacket(packet)
   })
 
-  const prefix = config.discord.prefix || "cac."
   client.on("messageCreate", (message) => {
+    let prefix = config.discord.prefix || "cac."
     if (message.channel.id !== config.discord.channels.chat || message.author.bot) return
     if (message.content.toLowerCase().startsWith(prefix.toLowerCase())) return
     let msgContent = message.content
@@ -1128,6 +1033,7 @@ async function startDiscord() {
   })
 
   client.on("messageCreate", async (message) => {
+    let prefix = config.discord.prefix || "cac."
     if (message.author.bot) return
     if (!message.content.toLowerCase().startsWith(prefix.toLowerCase())) return
 
@@ -1192,11 +1098,57 @@ async function start() {
 }
 
 process.on("uncaughtException", (err) => {
-  console.error(`[CrossArkChat] Uncaught Exception:`, err)
+  console.log(`[CrossArkChat] Uncaught Exception:`, err)
 })
 
 process.on("unhandledRejection", (err) => {
-  console.error(`[CrossArkChat] Unhandled Rejection:`, err)
+  console.log(`[CrossArkChat] Unhandled Rejection:`, err)
 })
+
+const modMan = {
+  installModule(moduleName, version) {
+    return new Promise((resolve, reject) => {
+      try {
+        require("child_process").execSync(`npm i ${version ? `${moduleName}@${version}` : moduleName}`, { stdio: "inherit" })
+
+        const mod = require(moduleName)
+        resolve(mod)
+      } catch (error) {
+        console.log(`Failed to install "${moduleName}"`)
+        reject(error)
+      }
+    })
+  },
+
+  async require(moduleName, version) {
+    try {
+      return require(moduleName)
+    } catch (e) {
+      await this.installModule(moduleName, version)
+      return require(moduleName)
+    }
+  },
+}
+
+let cacApi = {
+  isAdmin,
+  loadConfig,
+  loadCommands,
+  getCache: () => {
+    return cache
+  },
+  getConfig: () => {
+    return config
+  },
+  writeConfig: (newConfig) => {
+    Object.keys(config).forEach((key) => delete config[key])
+    Object.assign(config, newConfig)
+  },
+  writeCache: (newCache) => {
+    Object.keys(cache).forEach((key) => delete cache[key])
+    Object.assign(cache, newCache)
+  },
+  modMan,
+}
 
 start()
