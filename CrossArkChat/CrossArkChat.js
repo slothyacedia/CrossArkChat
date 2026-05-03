@@ -1,12 +1,14 @@
 const fs = require("node:fs")
 const path = require("node:path")
 const childProc = require("node:child_process")
+const EventEmitter = require("node:events")
 const dotenv = require("dotenv")
 const { Rcon } = require("rcon-client")
 const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js")
 const { GameDig } = require("gamedig")
-const CACJSversion = "v1.0.0-beta15"
+const CACJSversion = "v1.1.0-beta17 (plugins)"
 const processId = process.pid.toString()
+const emitter = new EventEmitter()
 process.title = "CrossArkChat.js"
 
 console.log(`CrossArkChat.JS ${CACJSversion}`)
@@ -275,6 +277,8 @@ function handlePacket(packet) {
       cachePacket(packet, "Discord")
     }
   }
+
+  emitter.emit("packet", packet)
 }
 
 async function sendTribeLogs(force = false) {
@@ -432,13 +436,18 @@ function createArkAgent(server) {
 
   let chatPoller = null
   let playerPoller = null
+  let cachePoller = null
   let heartbeat = null
   let reconnectTimer = null
+
   let pluginsLoaded = false
   let serverWasDown = false
   let pollingChat = false
   let pollingPlayers = false
+  let flushingCache = false
+
   let pollPlayersFailCount = 0
+  let heartbeatFailCount = 0
   let disconnectCount = 0
   let retryDelay = 5000
   const cacheKey = server.name
@@ -487,30 +496,32 @@ function createArkAgent(server) {
     saveCache()
   }
 
-  async function flushCache() {
-    if (state !== "CONNECTED") return
-    if (flushCache.running) return
+  function flushCache() {
+    let pollInterval = 1000
+    if (cachePoller) clearTimeout(cachePoller)
 
-    flushCache.running = true
-
-    try {
-      const queue = cache[cacheKey].messages ?? []
-
-      while (queue.length && state === "CONNECTED") {
-        const msg = queue[0]
-
-        const ok = await sendOk(`${config.ark.chatCommand || "serverchat"} ${msg}`)
-
-        if (!ok) break
-
-        queue.shift()
-        saveCache()
-
-        await sleep(queue.length > 20 ? 150 : 300)
+    async function loop() {
+      if (state === "CONNECTED" && !flushingCache) {
+        flushingCache = true
+        try {
+          const queue = cache[cacheKey].messages ?? []
+          while (queue.length) {
+            const msg = queue[0]
+            const ok = await sendOk(`${config.ark.chatCommand || "serverchat"} ${msg}`)
+            if (!ok) break
+            queue.shift()
+            saveCache()
+            await sleep(queue.length > 20 ? 150 : 300)
+          }
+        } finally {
+          flushingCache = false
+        }
       }
-    } finally {
-      flushCache.running = false
+
+      cachePoller = setTimeout(loop, pollInterval)
     }
+
+    loop()
   }
 
   // -------------------------
@@ -563,15 +574,15 @@ function createArkAgent(server) {
       startHeartbeat()
       pollChat()
       pollPlayers()
+      flushCache()
 
       if (!pluginsLoaded || serverWasDown) {
         console.log(`[${server.name}] Fresh Server Boot, Loading Plugins...`)
-        await loadPlugins()
+        await loadArkPlugins()
 
         pluginsLoaded = true
         serverWasDown = false
       }
-      await flushCache()
     } catch (err) {
       if (config.logging.rconStatus) console.log(`[${server.name}] RCON Connect Failed`)
       scheduleReconnect()
@@ -604,8 +615,14 @@ function createArkAgent(server) {
 
       const ok = await sendOk("listplayers")
 
-      if (!ok) {
-        handleDisconnect("heartbeat-fail")
+      if (ok) {
+        heartbeatFailCount = 0
+      } else {
+        if (heartbeatFailCount >= 2) {
+          handleDisconnect("heartbeat-fail")
+        } else {
+          heartbeatFailCount++
+        }
       }
     }, 30000)
   }
@@ -731,7 +748,7 @@ function createArkAgent(server) {
                   type: "join",
                   server: server.name,
                   player: player.name,
-                  text: "",
+                  text: "normal",
                   source: "listplayers",
                   metadata: {},
                 })
@@ -746,7 +763,7 @@ function createArkAgent(server) {
                   type: "leave",
                   server: server.name,
                   player: player.name,
-                  text: "",
+                  text: "normal",
                   source: "listplayers",
                   metadata: {},
                 })
@@ -767,7 +784,7 @@ function createArkAgent(server) {
               type: "leave",
               server: server.name,
               player: player.name,
-              text: "",
+              text: "forced-offline",
               source: "forced-offline",
               metadata: { forced: true },
             })
@@ -871,7 +888,7 @@ function createArkAgent(server) {
   // -------------------------
   // PLUGINS
   // -------------------------
-  async function loadPlugins() {
+  async function loadArkPlugins() {
     const plugins = config.ark.essentialPlugins || []
 
     for (const plugin of plugins) {
@@ -903,10 +920,12 @@ function createArkAgent(server) {
   function cleanup() {
     if (chatPoller) clearTimeout(chatPoller)
     if (playerPoller) clearTimeout(playerPoller)
+    if (cachePoller) clearTimeout(cachePoller)
     if (heartbeat) clearInterval(heartbeat)
 
     chatPoller = null
     playerPoller = null
+    cachePoller = null
     heartbeat = null
   }
 
@@ -925,31 +944,37 @@ function createArkAgent(server) {
 }
 
 let discordCommands = new Map()
+let loadedPlugins = new Map()
 
-async function loadCommands() {
-  discordCommands = new Map()
-  let commandsPath = path.join(__dirname, "commands")
-  let commandFiles = fs.readdirSync(commandsPath).filter((file) => file.toLowerCase().endsWith(".js"))
-  for (let commandFile of commandFiles) {
-    const filePath = path.join(commandsPath, commandFile)
-
-    delete require.cache[require.resolve(filePath)]
-    const command = require(filePath)
-    let names = command.names
-    let handler = async (message, cmd, args) => {
-      return command.execute(message, cmd, args, cacApi)
-    }
-    if (Array.isArray(names)) {
-      names.forEach((name) => discordCommands.set(name.toLowerCase(), handler))
-    } else {
-      discordCommands.set(names.toLowerCase(), handler)
-    }
-    console.log(`[CrossArkChat] Loaded ${commandFile} (${command.version || "v1.0.0"}) Commands: ${names.join(", ")}`)
+function registerCommand(names, handler) {
+  if (Array.isArray(names)) {
+    names.forEach((name) => discordCommands.set(name.toLowerCase(), handler))
+  } else {
+    discordCommands.set(names.toLowerCase(), handler)
   }
 }
 
-if (config.discord.enabled) {
-  loadCommands()
+async function loadPlugins() {
+  const pluginsPath = path.join(__dirname, "plugins")
+  if (!fs.existsSync(pluginsPath)) return
+
+  const folders = fs.readdirSync(pluginsPath).filter((f) => {
+    return fs.statSync(path.join(pluginsPath, f)).isDirectory()
+  })
+
+  for (const folder of folders) {
+    const filePath = path.join(pluginsPath, folder, "plugin.js")
+    if (!fs.existsSync(filePath)) continue
+    await loadPlugin(filePath)
+  }
+}
+
+async function loadPlugin(filePath) {
+  delete require.cache[require.resolve(filePath)]
+  const plugin = require(filePath)
+  await plugin.setup(cacApi)
+  loadedPlugins.set(plugin.name, filePath)
+  console.log(`[CrossArkChat] Loaded Plugin: ${plugin.name} ${plugin.version || "v1.0.0"}`)
 }
 
 // Authorisation Helper
@@ -977,7 +1002,7 @@ async function isAdmin(userId) {
 }
 
 // Starts Discord Bot
-async function startDiscord() {
+async function discordBot() {
   client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers],
   })
@@ -1072,7 +1097,7 @@ if (config.discord.enabled == true) {
         await client.destroy()
       } catch {}
 
-      startDiscord().finally(() => {
+      discordBot().finally(() => {
         restartingDiscord = false
       })
     }
@@ -1090,7 +1115,7 @@ async function start() {
   })
 
   if (config.discord.enabled == true) {
-    await startDiscord()
+    await discordBot()
   }
 
   if (config.logging.startup) {
@@ -1098,6 +1123,7 @@ async function start() {
   }
 
   saveCache()
+  await loadPlugins()
 }
 
 process.on("uncaughtException", (err) => {
@@ -1136,13 +1162,25 @@ const modMan = {
 let cacApi = {
   isAdmin,
   loadConfig,
-  loadCommands,
-  getCache: () => {
-    return cache
+  loadPlugin,
+  loadPlugins,
+  handlePacket,
+  registerCommand,
+  on: (event, handler) => emitter.on(event, handler),
+  off: (event, handler) => emitter.off(event, handler),
+  getCache: () => cache,
+  getConfig: () => config,
+  getArkAgents: () => arkAgents,
+  getDiscordClient: () => client,
+  reloadPlugin: async (name) => {
+    const filePath = loadedPlugins.get(name)
+    if (!filePath) throw new Error(`Plugin "${name}" not found`)
+    await loadPlugin(filePath)
   },
-  getConfig: () => {
-    return config
-  },
+  getLoadedPlugins: () => loadedPlugins,
+  sendToServers: (message) => arkAgents.forEach((agent) => agent.send(message)),
+  sendToServer: (name, message) => arkAgents.find((agent) => agent.name === name)?.send(message),
+  sendToDiscord: (channelId, message) => client?.channels.cache.get(channelId)?.send(message),
   writeConfig: (newConfig) => {
     Object.keys(config).forEach((key) => delete config[key])
     Object.assign(config, newConfig)
