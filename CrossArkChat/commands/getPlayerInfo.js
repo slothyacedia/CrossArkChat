@@ -1,5 +1,6 @@
 module.exports = {
   names: ["getplayerinfo", "gpi"],
+  version: "v1.0.0",
   async execute(message, cmd, args, cacApi) {
     let config = cacApi.getConfig()
     let cache = cacApi.getCache()

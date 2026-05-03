@@ -1,5 +1,6 @@
 module.exports = {
   names: ["reload", "reloadconfig", "reloadcommands"],
+  version: "v1.0.3",
   async execute(message, cmd, args, cacApi) {
     let isAdmin = cacApi.isAdmin
     let config = cacApi.getConfig()
@@ -9,7 +10,23 @@ module.exports = {
         throw new Error(`Not An Admin`)
       }
 
-      let reloadType = (args[0] || "").toLowerCase()
+      const reloadAliases = {
+        config: ["config", "conf", "cfg"],
+        commands: ["commands", "command", "cmd", "cmds"],
+      }
+
+      function resolveReload(input) {
+        input = (input || "").toLowerCase()
+
+        for (const [type, aliases] of Object.entries(reloadAliases)) {
+          if (aliases.includes(input)) return type
+        }
+
+        return null
+      }
+
+      let reloadType = resolveReload(args[0])
+
       if (!reloadType) {
         if (cmd == "reloadconfig") {
           reloadType = "config"

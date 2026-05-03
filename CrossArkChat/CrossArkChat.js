@@ -5,7 +5,7 @@ const dotenv = require("dotenv")
 const { Rcon } = require("rcon-client")
 const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js")
 const { GameDig } = require("gamedig")
-const CACJSversion = "v1.0.0-beta14"
+const CACJSversion = "v1.0.0-beta15"
 const processId = process.pid.toString()
 process.title = "CrossArkChat.js"
 
@@ -531,7 +531,7 @@ function createArkAgent(server) {
             type: "leave",
             server: server.name,
             player: player.name,
-            text: "",
+            text: "forced-offline",
             source: "forced-offline",
             metadata: { forced: true },
           })
@@ -944,11 +944,13 @@ async function loadCommands() {
     } else {
       discordCommands.set(names.toLowerCase(), handler)
     }
-    console.log(`[CrossArkChat] Loaded ${commandFile}`)
+    console.log(`[CrossArkChat] Loaded ${commandFile} (${command.version || "v1.0.0"}) Commands: ${names.join(", ")}`)
   }
 }
 
-loadCommands()
+if (config.discord.enabled) {
+  loadCommands()
+}
 
 // Authorisation Helper
 let botOwnerIds = null
