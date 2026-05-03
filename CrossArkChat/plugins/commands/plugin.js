@@ -1,8 +1,13 @@
 const path = require("node:path")
+let pluginCommands = ["getplayerinfo", "gpi", "reload", "reloadconfig", "reloadplugins", "reloadcommands", "restart"]
 
 module.exports = {
   name: "Core Commands",
   version: "v1.0.0",
+
+  teardown(cacApi) {
+    cacApi.unregisterCommand(pluginCommands)
+  },
 
   setup(cacApi) {
     // -------------------------

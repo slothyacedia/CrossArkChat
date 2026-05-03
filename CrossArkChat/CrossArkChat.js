@@ -970,6 +970,11 @@ async function loadPlugins() {
 }
 
 async function loadPlugin(filePath) {
+  if (require.cache[require.resolve(filePath)]) {
+    const old = require.cache[require.resolve(filePath)].exports
+    if (typeof old.teardown === "function") await old.teardown(cacApi)
+  }
+
   delete require.cache[require.resolve(filePath)]
   const plugin = require(filePath)
   await plugin.setup(cacApi)
@@ -1166,6 +1171,10 @@ let cacApi = {
   loadPlugins,
   handlePacket,
   registerCommand,
+  unregisterCommand: (names) => {
+    if (Array.isArray(names)) names.forEach((n) => discordCommands.delete(n.toLowerCase()))
+    else discordCommands.delete(names.toLowerCase())
+  },
   on: (event, handler) => emitter.on(event, handler),
   off: (event, handler) => emitter.off(event, handler),
   getCache: () => cache,

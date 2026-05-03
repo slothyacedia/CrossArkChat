@@ -1,21 +1,27 @@
 const path = require("node:path")
 const fs = require("node:fs")
 
+let onPacket = null
+
 module.exports = {
   name: "Watchlist",
   version: "v1.0.0",
+
+  teardown(cacApi) {
+    cacApi.unregisterCommand(["addwatcher", "removewatcher", "watchers", "setalertchannel"])
+    if (onPacket) cacApi.off("packet", onPacket)
+  },
 
   setup(cacApi) {
     const pluginDir = __dirname
     const configPath = path.join(pluginDir, "config.json")
 
-    // Create default config if it doesn't exist
     if (!fs.existsSync(configPath)) {
       fs.writeFileSync(
         configPath,
         JSON.stringify(
           {
-            alertChannel: "",
+            channel: "",
             watchlist: {
               names: [],
               steamIds: [],
@@ -56,21 +62,21 @@ module.exports = {
       return false
     }
 
-    cacApi.on("packet", (packet) => {
+    onPacket = function (packet) {
       if (!isWatched(packet)) return
 
       if (packet.type === "join") {
-        cacApi.sendToDiscord(pluginConfig.alertChannel, `⚠️ Watchlisted player **${packet.player}** joined **${packet.server}**`)
+        cacApi.sendToDiscord(pluginConfig.channel, `⚠️ Watchlisted player **${packet.player}** joined **${packet.server}**`)
       }
-
       if (packet.type === "chat") {
-        cacApi.sendToDiscord(pluginConfig.alertChannel, `⚠️ **${packet.player}** (${packet.server}): ${packet.text}`)
+        cacApi.sendToDiscord(pluginConfig.channel, `⚠️ **${packet.player}** (${packet.server}): ${packet.text}`)
       }
-
       if (packet.type === "leave") {
-        cacApi.sendToDiscord(pluginConfig.alertChannel, `⚠️ Watchlisted player **${packet.player}** left **${packet.server}**`)
+        cacApi.sendToDiscord(pluginConfig.channel, `⚠️ Watchlisted player **${packet.player}** left **${packet.server}**`)
       }
-    })
+    }
+
+    cacApi.on("packet", onPacket)
 
     cacApi.registerCommand(["addwatcher", "removewatcher", "watchers", "setalertchannel"], async (message, cmd, args) => {
       if (!(await cacApi.isAdmin(message.author.id))) {
@@ -87,7 +93,7 @@ module.exports = {
           if (pluginConfig.watchlist.names.includes(value)) return message.reply(`**${value}** is already on the watchlist.`)
           pluginConfig.watchlist.names.push(value)
           savePluginConfig(pluginConfig)
-          cacApi.sendToDiscord(pluginConfig.alertChannel, `🔎 **${value}** (name) added to watchlist by ${message.author.username}`)
+          cacApi.sendToDiscord(pluginConfig.channel, `🔎 **${value}** (name) added to watchlist by ${message.author.username}`)
           return message.reply(`Added name **${value}** to the watchlist.`)
         }
 
@@ -95,7 +101,7 @@ module.exports = {
           if (pluginConfig.watchlist.steamIds.includes(value)) return message.reply(`**${value}** is already on the watchlist.`)
           pluginConfig.watchlist.steamIds.push(value)
           savePluginConfig(pluginConfig)
-          cacApi.sendToDiscord(pluginConfig.alertChannel, `🔎 **${value}** (steamid) added to watchlist by ${message.author.username}`)
+          cacApi.sendToDiscord(pluginConfig.channel, `🔎 **${value}** (steamid) added to watchlist by ${message.author.username}`)
           return message.reply(`Added steamid **${value}** to the watchlist.`)
         }
 
@@ -140,8 +146,7 @@ module.exports = {
 
       if (cmd === "setalertchannel") {
         const channelId = args[0] || message.channel.id
-        if (!channelId) return message.reply("Usage: cac.setalertchannel <channelId>")
-        pluginConfig.alertChannel = channelId
+        pluginConfig.channel = channelId
         savePluginConfig(pluginConfig)
         return message.reply(`Alert channel set to <#${channelId}>`)
       }
