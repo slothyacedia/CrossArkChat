@@ -1,11 +1,7 @@
 {
-  "alertChannel": "1500499826188746883",
+  "alertChannel": "",
   "watchlist": {
-    "names": [
-      "123"
-    ],
-    "steamIds": [
-      "76561199250653545"
-    ]
+    "names": ["123"],
+    "steamIds": [""]
   }
 }
