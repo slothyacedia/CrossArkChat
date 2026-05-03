@@ -175,7 +175,14 @@ Get a player's info such as how long they've been connected and which server the
 | Hot Reload           | Yes             | No             |
 | Open Source          | Yes             | No             |
 | Easier Config        | Yes             | No             |
+| Developer API        | Yes             | No             |
 | More Flexible Config | No              | Yes            |
+
+---
+
+# Developer API
+
+CrossArkChat.js exposes APIs that can be used for Discord commands, read the documentation [here](https://github.com/slothyacedia/CrossArkChat/blob/main/API.md)
 
 ---
 
