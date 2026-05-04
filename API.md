@@ -271,7 +271,7 @@ Returns: `null`
 
 ## ARK
 
-### getAgents()
+### `getAgents()`
 
 Returns all ARK RCON agents which exposes extra APIs on top
 
