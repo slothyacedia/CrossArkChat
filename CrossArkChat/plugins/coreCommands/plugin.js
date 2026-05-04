@@ -1,21 +1,24 @@
 const path = require("node:path")
-let pluginCommands = ["getplayerinfo", "gpi", "reload", "reloadconfig", "reloadplugins", "reloadcommands", "restart"]
+let pluginCommands = {
+  getplayerinfo: ["getplayerinfo", "gpi"],
+  reload: ["reload", "reloadconfig", "reloadplugins", "reloadcommands"],
+  restart: ["restart"],
+}
+
+let commandsList = Object.values(pluginCommands).flat()
 
 module.exports = {
   name: "Core Commands",
   version: "v1.0.0",
 
   teardown(cacApi) {
-    cacApi.unregisterCommand(pluginCommands)
+    cacApi.discord.commands.unregister(commandsList)
   },
 
   setup(cacApi) {
-    // -------------------------
-    // GET PLAYER INFO
-    // -------------------------
-    cacApi.registerCommand(["getplayerinfo", "gpi"], async (message, cmd, args) => {
-      const config = cacApi.getConfig()
-      const cache = cacApi.getCache()
+    cacApi.discord.commands.register(pluginCommands.getplayerinfo, async (message, cmd, args) => {
+      const config = cacApi.config.get()
+      const cache = cacApi.cache.get()
 
       try {
         const query = args.join(" ").toLowerCase().trim()
@@ -28,7 +31,9 @@ module.exports = {
           return (cache[server.name]?.players || []).map((player) => ({ ...player, server }))
         })
 
-        let matches = serverPlayers.filter((player) => player.name.toLowerCase().includes(query) || player.steamId.includes(query))
+        let matches = serverPlayers.filter(
+          (player) => player.name.toLowerCase().includes(query) || player.data.ign.toLowerCase().includes(query) || player.steamId.includes(query),
+        )
 
         if (matches.length === 0) return message.reply("No Player Found")
 
@@ -65,14 +70,11 @@ module.exports = {
       }
     })
 
-    // -------------------------
-    // RELOAD
-    // -------------------------
-    cacApi.registerCommand(["reload", "reloadconfig", "reloadplugins", "reloadcommands"], async (message, cmd, args) => {
-      const config = cacApi.getConfig()
+    cacApi.discord.commands.register(pluginCommands.reload, async (message, cmd, args) => {
+      const config = cacApi.config.get()
 
       try {
-        if (!(await cacApi.isAdmin(message.author.id))) throw new Error("Not An Admin")
+        if (!(await cacApi.utils.isAdmin(message.author.id))) throw new Error("Not An Admin")
 
         const reloadAliases = {
           config: ["config", "conf", "cfg"],
@@ -98,19 +100,19 @@ module.exports = {
 
         switch (reloadType) {
           case "config": {
-            cacApi.writeConfig(cacApi.loadConfig())
+            cacApi.config.write(cacApi.config.load())
             console.log(`[CrossArkChat] Config Reloaded By ${message.member.nickname}(${message.author.id})`)
             return message.reply("Config Reload Success")
           }
 
           case "plugins": {
-            await cacApi.loadPlugins()
+            await cacApi.plugins.loadAll()
             console.log(`[CrossArkChat] Plugins Reloaded By ${message.member.nickname}(${message.author.id})`)
             return message.reply("Plugins Reload Success")
           }
 
           case "commands": {
-            await cacApi.reloadPlugin("Core Commands")
+            await cacApi.plugins.reload("Core Commands")
             console.log(`[CrossArkChat] Commands Reloaded By ${message.member.nickname}(${message.author.id})`)
             return message.reply("Commands Reload Success")
           }
@@ -126,14 +128,11 @@ module.exports = {
       }
     })
 
-    // -------------------------
-    // RESTART
-    // -------------------------
-    cacApi.registerCommand(["restart"], async (message, cmd, args) => {
+    cacApi.discord.commands.register(pluginCommands.restart, async (message, cmd, args) => {
       try {
-        if (!(await cacApi.isAdmin(message.author.id))) throw new Error("Not An Admin")
+        if (!(await cacApi.utils.isAdmin(message.author.id))) throw new Error("Not An Admin")
 
-        const childProc = await cacApi.modMan.require("node:child_process")
+        const childProc = await cacApi.utils.modMan.require("node:child_process")
 
         console.log(`[CrossArkChat] Restart Requested By ${message.member.nickname}(${message.author.id})`)
         await message.reply("Restarting...")

@@ -176,6 +176,7 @@ Get a player's info such as how long they've been connected and which server the
 | Open Source          | Yes             | No             |
 | Easier Config        | Yes             | No             |
 | Developer API        | Yes             | No             |
+| Extensible           | Yes             | No             |
 | More Flexible Config | No              | Yes            |
 
 ---
