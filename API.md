@@ -113,8 +113,6 @@ if (isAdmin) {
 ```
 
 Returns: `<Bool>`
-true => User is an admin
-false => User is not an admin
 
 ---
 
@@ -203,6 +201,90 @@ Returns: `null`
 ---
 
 ## Cache
+
+### `get()`
+
+Returns the current mutable cache that is stored in RAM
+
+Usage:
+
+```js
+let cache = cacApi.cache.get()
+let cacheKey = server.name
+cache[cacheKey].messages.push("hello world!")
+```
+
+Returns: `Object`
+
+---
+
+### `write()`
+
+Writes to the current cache but most likely isn't needed due to `get()` returning a live mutable object
+
+> [!WARNING]
+> This can totally destroy your cache and crash CrossArkChat
+
+Usage:
+
+```js
+cacApi.cache.write(cache)
+```
+
+Returns: `null`
+
+---
+
+## Events
+
+### `on(<event>, <handler>)`
+
+Allows you to hook into CrossArkChat's emitted events to act on them
+
+Usage:
+
+```js
+cacApi.events.on("packet" (packet)=>{
+  console.log(JSON.stringify(packet, null, 2))
+})
+```
+
+Returns: `EventData`
+
+---
+
+### `off(<event>, <handler>)`
+
+Allows you to unhook from CrossArkChat's emitted events if acting on them
+
+Usage:
+
+```js
+cacApi.events.off("packet" (packet)=>{
+  console.log(JSON.stringify(packet, null, 2))
+})
+```
+
+Returns: `null`
+
+---
+
+## ARK
+
+### getAgents()
+
+Returns all ARK RCON agents which exposes extra APIs on top
+
+Usage:
+
+```js
+let arkAgents = cacApi.ark.getAgents()
+arkAgent.forEach((agent) => agent.send("hello world"))
+```
+
+Returns: `Array`
+
+---
 
 > [!NOTE]
 > This documentation is still WIP

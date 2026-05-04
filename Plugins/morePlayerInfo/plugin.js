@@ -2,6 +2,7 @@ const path = require("node:path")
 const fs = require("node:fs")
 
 let onPacket = null
+let poller = null
 
 module.exports = {
   name: "More Player Info",
@@ -9,6 +10,7 @@ module.exports = {
 
   teardown(cacApi) {
     if (onPacket) cacApi.events.off("packet", onPacket)
+    if (poller) clearInterval(poller)
   },
 
   setup(cacApi) {
@@ -16,7 +18,7 @@ module.exports = {
     let arkAgents = cacApi.ark.getAgents()
 
     let cache = getCache()
-    setInterval(async () => {
+    poller = setInterval(async () => {
       arkAgents.forEach(async (agent) => {
         const cacheKey = agent.name
         let response = await agent.sendCommand("ListAllPlayerSteamId")
