@@ -538,25 +538,23 @@ function createArkAgent(server) {
       if (disconnectCount >= 5) {
         let previousPlayers = cache[cacheKey].players
         for (const player of previousPlayers) {
-          if (!currentPlayers.find((current) => current.steamId === player.steamId)) {
-            const timer = setTimeout(() => leaveCache.delete(player.steamId), gracePeriod)
+          const timer = setTimeout(() => leaveCache.delete(player.steamId), gracePeriod)
 
-            leaveCache.set(player.steamId, {
-              sessionStart: player.data?.sessionStart,
-              timer,
-            })
+          leaveCache.set(player.steamId, {
+            sessionStart: player.data?.sessionStart,
+            timer,
+          })
 
-            handlePacket({
-              id: `${server.name}-leave-${Date.now()}`,
-              origin: server.name,
-              type: "leave",
-              server: server.name,
-              player: player.name,
-              text: "normal",
-              source: "forced-offline",
-              metadata: { forced: true, steamId: player.steamId, sessionStart: player.data?.sessionStart },
-            })
-          }
+          handlePacket({
+            id: `${server.name}-leave-${Date.now()}`,
+            origin: server.name,
+            type: "leave",
+            server: server.name,
+            player: player.name,
+            text: "normal",
+            source: "forced-offline",
+            metadata: { forced: true, steamId: player.steamId, sessionStart: player.data?.sessionStart },
+          })
         }
         cache[cacheKey].players = []
       }
@@ -807,25 +805,23 @@ function createArkAgent(server) {
 
         if (pollPlayersFailCount >= 5 && previousPlayers.length) {
           for (const player of previousPlayers) {
-            if (!currentPlayers.find((current) => current.steamId === player.steamId)) {
-              const timer = setTimeout(() => leaveCache.delete(player.steamId), gracePeriod)
+            const timer = setTimeout(() => leaveCache.delete(player.steamId), gracePeriod)
 
-              leaveCache.set(player.steamId, {
-                sessionStart: player.data?.sessionStart,
-                timer,
-              })
+            leaveCache.set(player.steamId, {
+              sessionStart: player.data?.sessionStart,
+              timer,
+            })
 
-              handlePacket({
-                id: `${server.name}-leave-${Date.now()}`,
-                origin: server.name,
-                type: "leave",
-                server: server.name,
-                player: player.name,
-                text: "normal",
-                source: "forced-offline",
-                metadata: { forced: true, steamId: player.steamId, sessionStart: player.data?.sessionStart },
-              })
-            }
+            handlePacket({
+              id: `${server.name}-leave-${Date.now()}`,
+              origin: server.name,
+              type: "leave",
+              server: server.name,
+              player: player.name,
+              text: "normal",
+              source: "forced-offline",
+              metadata: { forced: true, steamId: player.steamId, sessionStart: player.data?.sessionStart },
+            })
           }
 
           cache[cacheKey].players = []
