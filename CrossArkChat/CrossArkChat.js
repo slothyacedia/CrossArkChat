@@ -953,7 +953,6 @@ function createArkAgent(server) {
 
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null
-      retryDelay = Math.min(retryDelay * 2, 60000)
 
       connect()
     }, retryDelay)
