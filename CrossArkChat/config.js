@@ -23,6 +23,7 @@ module.exports = {
     pollChatInterval: 100,
     pollPlayersInterval: 100,
     commandTimeout: 1000,
+    transferGracePeriod: 60000,
     chatCommand: "serverchat",
     essentialPlugins: ["Permissions", "PlayerUtilities", "DinoUtilities", "ExtendedRcon", "UnicodeRcon", "RewardsEvolved"],
     ignoredResponses: ["Server received, But no response!!", "Deactivated", "Force respawning Wild Dinos!"],
@@ -33,12 +34,12 @@ module.exports = {
     enabled: true,
     token: "",
     prefix: "cac.",
-    admins: [""],
+    admins: [],
     stripEmojis: true,
     channels: {
       chat: "",
-      join: "",
-      leave: "",
+      join: "", // Defaults to the chat channel
+      leave: "", // Defaults to the chat channel
       tribeLogs: "",
       leftovers: "",
     },
@@ -55,8 +56,8 @@ module.exports = {
     Chat / Text: {text}, {message}
     */
     toConsole: {
-      join: "{player} joined {serverName}",
-      leave: "{player} left {serverName}",
+      join: "{player} joined {serverName} ({text})",
+      leave: "{player} left {serverName} ({text})",
       chat: "[{serverName}] {player}: {text}",
       tribeLogs: "[{serverName}] {tribeName}({tribeId}): {text}",
       leftovers: "[{serverName}] {text}",
@@ -130,5 +131,6 @@ module.exports = {
     rconStatus: true,
     discordStatus: true,
     startup: true,
+    plugins: false,
   },
 }

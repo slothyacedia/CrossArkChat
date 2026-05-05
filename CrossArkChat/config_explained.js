@@ -23,6 +23,7 @@ module.exports = {
     pollChatInterval: 100, // Chat polling interval in ms
     pollPlayersInterval: 100, // Player polling interval in ms
     commandTimeout: 1000, // Timeout a command after x ms
+    transferGracePeriod: 60000, // Caches the player's session time and removes after this grace period in ms
     chatCommand: "serverchat", // Command used to chat
     essentialPlugins: ["Permissions", "PlayerUtilities", "DinoUtilities", "ExtendedRcon", "UnicodeRcon", "RewardsEvolved"],
     // Plugins that will be loaded on connect
@@ -61,8 +62,8 @@ module.exports = {
     Chat / Text: {text}, {message}
     */
     toConsole: {
-      join: "{player} joined {serverName}",
-      leave: "{player} left {serverName}",
+      join: "{player} joined {serverName} ({text})",
+      leave: "{player} left {serverName} ({text})",
       chat: "[{serverName}] {player}: {text}",
       tribeLogs: "[{serverName}] {tribeName}({tribeId}): {text}",
       leftovers: "[{serverName}] {text}",
@@ -142,5 +143,6 @@ module.exports = {
     rconStatus: true,
     discordStatus: true,
     startup: true,
+    plugins: false,
   },
 }

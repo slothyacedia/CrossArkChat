@@ -6,7 +6,7 @@ const dotenv = require("dotenv")
 const { Rcon } = require("rcon-client")
 const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js")
 const { GameDig } = require("gamedig")
-const CACJSversion = "v1.1.2-rc"
+const CACJSversion = "v1.1.3-rc"
 const processId = process.pid.toString()
 const emitter = new EventEmitter()
 process.title = "CrossArkChat.js"
@@ -47,8 +47,9 @@ let client = null
 let clientReady = false
 let arkAgents = []
 
-// Message Caches
+// Caches
 let cache = {}
+let leaveCache = new Map()
 let saveCacheTimeout = null
 if (fs.existsSync(path.join(__dirname, "cache.json"))) {
   try {
@@ -450,6 +451,7 @@ function createArkAgent(server) {
   let heartbeatFailCount = 0
   let disconnectCount = 0
   let retryDelay = 5000
+  const gracePeriod = Number(config.ark.transferGracePeriod) || 30000
 
   let commandTimeout = Number(config.ark.commandTimeout) || 5000
 
@@ -536,16 +538,25 @@ function createArkAgent(server) {
       if (disconnectCount >= 5) {
         let previousPlayers = cache[cacheKey].players
         for (const player of previousPlayers) {
-          handlePacket({
-            id: `${server.name}-leave-${Date.now()}`,
-            origin: server.name,
-            type: "leave",
-            server: server.name,
-            player: player.name,
-            text: "forced-offline",
-            source: "forced-offline",
-            metadata: { forced: true, steamId: player.steamId },
-          })
+          if (!currentPlayers.find((current) => current.steamId === player.steamId)) {
+            const timer = setTimeout(() => leaveCache.delete(player.steamId), gracePeriod)
+
+            leaveCache.set(player.steamId, {
+              sessionStart: player.data?.sessionStart,
+              timer,
+            })
+
+            handlePacket({
+              id: `${server.name}-leave-${Date.now()}`,
+              origin: server.name,
+              type: "leave",
+              server: server.name,
+              player: player.name,
+              text: "normal",
+              source: "forced-offline",
+              metadata: { forced: true, steamId: player.steamId, sessionStart: player.data?.sessionStart },
+            })
+          }
         }
         cache[cacheKey].players = []
       }
@@ -743,6 +754,16 @@ function createArkAgent(server) {
 
             for (const player of currentPlayers) {
               if (!previousPlayers.find((previous) => previous.steamId === player.steamId)) {
+                const grace = leaveCache.get(player.steamId)
+
+                if (grace) {
+                  clearTimeout(grace.timer)
+                  leaveCache.delete(player.steamId)
+                  player.data.sessionStart = grace.sessionStart
+                } else {
+                  player.data.sessionStart = player.joinTime
+                }
+
                 handlePacket({
                   id: `${server.name}-join-${Date.now()}`,
                   origin: server.name,
@@ -758,6 +779,13 @@ function createArkAgent(server) {
 
             for (const player of previousPlayers) {
               if (!currentPlayers.find((current) => current.steamId === player.steamId)) {
+                const timer = setTimeout(() => leaveCache.delete(player.steamId), gracePeriod)
+
+                leaveCache.set(player.steamId, {
+                  sessionStart: player.data?.sessionStart,
+                  timer,
+                })
+
                 handlePacket({
                   id: `${server.name}-leave-${Date.now()}`,
                   origin: server.name,
@@ -766,7 +794,7 @@ function createArkAgent(server) {
                   player: player.name,
                   text: "normal",
                   source: "listplayers",
-                  metadata: { steamId: player.steamId },
+                  metadata: { steamId: player.steamId, sessionStart: player.data?.sessionStart },
                 })
               }
             }
@@ -779,16 +807,25 @@ function createArkAgent(server) {
 
         if (pollPlayersFailCount >= 5 && previousPlayers.length) {
           for (const player of previousPlayers) {
-            handlePacket({
-              id: `${server.name}-leave-${Date.now()}`,
-              origin: server.name,
-              type: "leave",
-              server: server.name,
-              player: player.name,
-              text: "forced-offline",
-              source: "forced-offline",
-              metadata: { forced: true, steamId: player.steamId },
-            })
+            if (!currentPlayers.find((current) => current.steamId === player.steamId)) {
+              const timer = setTimeout(() => leaveCache.delete(player.steamId), gracePeriod)
+
+              leaveCache.set(player.steamId, {
+                sessionStart: player.data?.sessionStart,
+                timer,
+              })
+
+              handlePacket({
+                id: `${server.name}-leave-${Date.now()}`,
+                origin: server.name,
+                type: "leave",
+                server: server.name,
+                player: player.name,
+                text: "normal",
+                source: "forced-offline",
+                metadata: { forced: true, steamId: player.steamId, sessionStart: player.data?.sessionStart },
+              })
+            }
           }
 
           cache[cacheKey].players = []

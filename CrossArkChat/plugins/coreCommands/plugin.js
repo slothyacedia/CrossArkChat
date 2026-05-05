@@ -9,7 +9,7 @@ let commandsList = Object.values(pluginCommands).flat()
 
 module.exports = {
   name: "Core Commands",
-  version: "v1.0.0",
+  version: "v1.2.2",
 
   teardown(cacApi) {
     cacApi.discord.commands.unregister(commandsList)
@@ -37,7 +37,7 @@ module.exports = {
 
         if (matches.length === 0) return message.reply("No Player Found")
 
-        function formatSessionTime(ms) {
+        function formatTime(ms) {
           if (!ms) return "Unknown"
           const totalSeconds = Math.floor(ms / 1000)
           const seconds = totalSeconds % 60
@@ -48,18 +48,42 @@ module.exports = {
           return `${seconds}s`
         }
 
-        let results = matches.map((player) => ({
-          name: player.name,
-          steamId: player.steamId,
-          server: player.server.name,
-          sessionTime: player.joinTime ? Date.now() - player.joinTime : null,
-        }))
+        let results = matches.map((player) => {
+          let name = player.data?.ign ? `${player.name} (${player.data.ign})` : player.name
+          let sessionTime = Date.now() - (player.data?.sessionStart ? player.data.sessionStart : player.joinTime)
+          let joinTime = Date.now() - player.joinTime
+
+          return {
+            name,
+            tribe: player.data?.tribeName || null,
+            steamId: player.steamId,
+            server: player.server.name,
+            joinTime,
+            sessionTime,
+          }
+        })
 
         const truncated = results.length > 5
         if (truncated) results = results.slice(0, 5)
 
+        const fields = {
+          player: (r) => `Player: ${r.name}`,
+          steam: (r) => `Steam: ${r.steamId}`,
+          tribe: (r) => r.tribe && `Tribe: ${r.tribe}`,
+          server: (r) => `Server: ${r.server}`,
+          join: (r) => `Current Server Time: ${formatTime(r.joinTime)}`,
+          session: (r) => `Session Time: ${formatTime(r.sessionTime)}`,
+        }
+
+        const layout = ["player", "steam", "tribe", "server", "join", "session"]
+
         let reply = results
-          .map((r) => `Player: ${r.name}\nSteam: ${r.steamId}\nServer: ${r.server}\nSession Time: ${formatSessionTime(r.sessionTime)}`)
+          .map((result) =>
+            layout
+              .map((key) => fields[key](result))
+              .filter(Boolean)
+              .join("\n"),
+          )
           .join("\n\n")
 
         if (truncated) reply += `\n\n-# More Than 5 Players Found, Try Limiting The Scope More`
