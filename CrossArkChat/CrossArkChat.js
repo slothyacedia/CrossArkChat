@@ -4,9 +4,9 @@ const childProc = require("node:child_process")
 const EventEmitter = require("node:events")
 const dotenv = require("dotenv")
 const { Rcon } = require("rcon-client")
-const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js")
+const { Client, GatewayIntentBits, EmbedBuilder, REST, Routes } = require("discord.js")
 const { GameDig } = require("gamedig")
-const CACJSversion = "v1.1.3-rc"
+const CACJSversion = "v1.2.0-beta3 (slashCommands-args)"
 const processId = process.pid.toString()
 const emitter = new EventEmitter()
 process.title = "CrossArkChat.js"
@@ -883,7 +883,7 @@ function createArkAgent(server) {
     let tribeLogsRegex =
       config.ark.tribeLogsRegex instanceof RegExp
         ? config.ark.tribeLogsRegex
-        : /^Tribe\s+(.+?),\s+ID\s+(\d+):\s+Day\s+(\d+),\s+([\d:]+):\s+<RichColor Color="([^"]+)">([\s\S]+?)<\/?>\)?$/
+        : /^Tribe\s+(.+?),\s+ID\s+(\d+):\s+Day\s+(\d+),\s+([\d:]+):\s+(?:<RichColor Color="([^"]+)">)?([\s\S]+?)(?:<\/>)?\)?$/
     let tribeLog = line.match(tribeLogsRegex)
     if (tribeLog) {
       let [, tribeName, tribeId, day, time, colorRaw, message] = tribeLog
@@ -990,26 +990,11 @@ function createArkAgent(server) {
   }
 }
 
-let discordCommands = new Map()
+let textCommands = new Map()
+let slashCommands = new Map()
 let loadedPlugins = new Map()
 
-function registerCommand(names, handler) {
-  if (Array.isArray(names)) {
-    names.forEach((name) => {
-      discordCommands.set(name.toLowerCase(), handler)
-      if (config.logging.plugins) {
-        console.log(`[CrossArkChat] Command Registered: ${name.toLowerCase()}`)
-      }
-    })
-  } else {
-    discordCommands.set(names.toLowerCase(), handler)
-    if (config.logging.plugins) {
-      console.log(`[CrossArkChat] Command Registered: ${name.toLowerCase()}`)
-    }
-  }
-}
-
-async function loadPlugins() {
+async function loadPlugins(forced = false) {
   const pluginsPath = path.join(__dirname, "plugins")
   if (!fs.existsSync(pluginsPath)) return
 
@@ -1024,7 +1009,7 @@ async function loadPlugins() {
   }
 }
 
-async function loadPlugin(filePath) {
+async function loadPlugin(filePath, forced = false) {
   if (require.cache[require.resolve(filePath)]) {
     const old = require.cache[require.resolve(filePath)].exports
     if (typeof old.teardown === "function") await old.teardown(cacApi)
@@ -1039,29 +1024,35 @@ async function loadPlugin(filePath) {
   }
 }
 
-// Authorisation Helper
-let botOwnerIds = null
+async function registerSlash({ scope = "guild", guild }) {
+  const rest = new REST({ version: "10" }).setToken(config.discord.token || process.env.botToken)
 
-async function isAdmin(userId) {
-  if (!client) return false
+  const commands = [...slashCommands.values()].map((command) => command.commandData.toJSON())
 
-  const id = String(userId)
-  if ((config.discord.admins || []).includes(id)) return true
-  else if (!botOwnerIds) {
-    const application = await client.application.fetch()
-    const owner = application.owner
-    botOwnerIds = new Set()
+  switch (scope) {
+    case "global": {
+      await rest.put(Routes.applicationCommands(client.user.id), { body: commands })
+      break
+    }
 
-    if (owner?.constructor?.name === "Team") {
-      for (const member of owner.members.values()) {
-        botOwnerIds.add(member.user.id)
+    case "guild": {
+      let guildId = guild
+      if (typeof guild == "object" && guild?.id) {
+        guildId = guild.id
       }
-    } else if (owner) {
-      botOwnerIds.add(owner.id)
+      if (!guildId) throw new Error("Guild ID Required For Guild Scope")
+
+      await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), { body: commands })
+      break
     }
   }
-  if (botOwnerIds.has(id)) return true
+
+  if (config.logging.plugins) {
+    console.log(`[CrossArkChat] ${commands.length} Slash Commands Registered To Discord`)
+  }
 }
+
+let botOwnerIds = null
 
 // Starts Discord Bot
 async function discordBot() {
@@ -1130,11 +1121,38 @@ async function discordBot() {
     const raw = message.content.slice(prefix.length).trim()
     const [cmd, ...args] = raw.split(/\s+/)
 
-    const handler = discordCommands.get(cmd.toLowerCase())
+    const handler = textCommands.get(cmd.toLowerCase())
     if (!handler) return
 
     try {
       await handler(message, cmd, args)
+    } catch (err) {}
+  })
+
+  client.on("interactionCreate", async (interaction) => {
+    if (!interaction.isChatInputCommand()) return
+
+    const cmd = interaction.commandName.toLowerCase()
+    const commandData = slashCommands.get(cmd)
+    if (!commandData) return
+    let handler = commandData.handler
+
+    const args = {}
+
+    for (const option of interaction.options.data) {
+      if (option.type === 1) {
+        args.subCommand = option.name
+
+        for (const subOption of option.options ?? []) {
+          args[subOption.name] = subOption.value
+        }
+      } else {
+        args[option.name] = option.value
+      }
+    }
+
+    try {
+      await handler(interaction, cmd, args)
     } catch (err) {}
   })
 
@@ -1186,6 +1204,7 @@ async function start() {
 
   saveCache()
   await loadPlugins()
+  await registerSlash({ ...config.discord.slashCommands })
 }
 
 process.on("uncaughtException", (err) => {
@@ -1223,7 +1242,26 @@ let modMan = {
 
 let cacApi = {
   utils: {
-    isAdmin,
+    isAdmin: async (userId) => {
+      if (!client) return false
+
+      const id = String(userId)
+      if ((config.discord.admins || []).includes(id)) return true
+      else if (!botOwnerIds) {
+        const application = await client.application.fetch()
+        const owner = application.owner
+        botOwnerIds = new Set()
+
+        if (owner?.constructor?.name === "Team") {
+          for (const member of owner.members.values()) {
+            botOwnerIds.add(member.user.id)
+          }
+        } else if (owner) {
+          botOwnerIds.add(owner.id)
+        }
+      }
+      if (botOwnerIds.has(id)) return true
+    },
     handlePacket,
     modMan,
   },
@@ -1253,14 +1291,14 @@ let cacApi = {
   ark: {
     getAgents: () => arkAgents,
 
-    message: {
-      toServers: (message) => arkAgents.forEach((agent) => agent.send(message)),
-      toServer: (name, message) => arkAgents.find((agent) => agent.name === name)?.send(message),
+    server: {
+      sendChat: (name, message) => arkAgents.find((agent) => agent.name === name)?.send(message),
+      sendCommand: (name, command) => arkAgents.find((agent) => agent.name === name)?.sendCommand(command),
     },
 
-    command: {
-      toServers: (command) => arkAgents.forEach((agent) => agent.sendCommand(command)),
-      toServer: (name, command) => arkAgents.find((agent) => agent.name === name)?.sendCommand(command),
+    servers: {
+      sendChat: (message) => arkAgents.forEach((agent) => agent.send(message)),
+      sendCommand: (command) => arkAgents.forEach((agent) => agent.sendCommand(command)),
     },
   },
 
@@ -1269,17 +1307,58 @@ let cacApi = {
     send: (channelId, message) => client?.channels.cache.get(channelId)?.send(message),
 
     commands: {
-      register: registerCommand,
-      unregister: (names) => {
-        if (Array.isArray(names)) {
-          names.forEach((n) => {
-            if (discordCommands.has(n.toLowerCase())) {
-              discordCommands.delete(n.toLowerCase())
+      text: {
+        register: (names, handler, forced = false) => {
+          const commandNames = Array.isArray(names) ? names : [names]
+
+          commandNames.forEach((name) => {
+            const lower = name.toLowerCase()
+
+            textCommands.set(lower, handler)
+
+            if (config.logging.plugins) {
+              console.log(`[CrossArkChat] Command Registered: ${lower}`)
             }
           })
-        } else {
-          discordCommands.delete(names.toLowerCase())
-        }
+        },
+
+        unregister: (names) => {
+          if (Array.isArray(names)) {
+            names.forEach((n) => {
+              if (textCommands.has(n.toLowerCase())) {
+                textCommands.delete(n.toLowerCase())
+              }
+            })
+          } else {
+            textCommands.delete(names.toLowerCase())
+          }
+        },
+      },
+
+      slash: {
+        register: (name, commandData, handler, forced = false) => {
+          const lower = name.toLowerCase()
+
+          slashCommands.set(lower, { commandData, handler })
+
+          if (config.logging.plugins) {
+            console.log(`[CrossArkChat] Slash Command Registered: ${lower}`)
+          }
+        },
+
+        unregister: (names) => {
+          if (Array.isArray(names)) {
+            names.forEach((name) => slashCommands.delete(name.toLowerCase()))
+          } else {
+            slashCommands.delete(names.toLowerCase())
+          }
+        },
+
+        getCommands: () => {
+          return [...slashCommands.values()].map((command) => command.commandData.toJSON())
+        },
+
+        implement: registerSlash,
       },
     },
   },
@@ -1288,10 +1367,10 @@ let cacApi = {
     load: loadPlugin,
     loadAll: loadPlugins,
     loaded: () => loadedPlugins,
-    reload: async (name) => {
+    reload: async (name, forced = false) => {
       const filePath = loadedPlugins.get(name)
       if (!filePath) throw new Error(`Plugin "${name}" not found`)
-      await loadPlugin(filePath)
+      await loadPlugin(filePath, forced)
     },
   },
 }

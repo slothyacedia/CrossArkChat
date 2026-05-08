@@ -6,14 +6,18 @@ let pluginCommands = ["watchlist", "wl"]
 
 module.exports = {
   name: "Watchlist",
-  version: "v1.2.0",
+  version: "v2.0.2",
 
   teardown(cacApi) {
-    cacApi.discord.commands.unregister(pluginCommands)
+    let textCmd = cacApi.discord.commands.text
+    textCmd.unregister(pluginCommands)
     if (onPacket) cacApi.events.off("packet", onPacket)
   },
 
   setup(cacApi) {
+    const { SlashCommandBuilder } = require("discord.js")
+    let textCmd = cacApi.discord.commands.text
+    let slashCmd = cacApi.discord.commands.slash
     const pluginDir = __dirname
     const configPath = path.join(pluginDir, "config.json")
 
@@ -40,6 +44,7 @@ module.exports = {
     }
 
     function savePluginConfig(config) {
+      config.watchlist.names = config.watchlist.names.map((name) => name.toLowerCase())
       fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
     }
 
@@ -93,7 +98,7 @@ module.exports = {
 
     cacApi.events.on("packet", onPacket)
 
-    cacApi.discord.commands.register(pluginCommands, async (message, cmd, args) => {
+    textCmd.register(pluginCommands, async (message, cmd, args) => {
       if (!(await cacApi.utils.isAdmin(message.author.id))) {
         return message.reply("You don't have permission to use this command.")
       }
@@ -170,5 +175,187 @@ module.exports = {
         ].join("\n"),
       )
     })
+
+    slashCmd.register(
+      "watchlist",
+
+      new SlashCommandBuilder()
+        .setName("watchlist")
+        .setDescription("Manage the watchlist")
+
+        .addSubcommand((sub) =>
+          sub
+            .setName("add")
+            .setDescription("Add to watchlist")
+            .addStringOption((option) => option.setName("name").setDescription("Player name").setRequired(false))
+            .addStringOption((option) => option.setName("steamid").setDescription("Steam ID").setRequired(false)),
+        )
+
+        .addSubcommand((sub) =>
+          sub
+            .setName("remove")
+            .setDescription("Remove from watchlist")
+            .addStringOption((option) => option.setName("name").setDescription("Player name").setRequired(false))
+            .addStringOption((option) => option.setName("steamid").setDescription("Steam ID").setRequired(false)),
+        )
+
+        .addSubcommand((sub) => sub.setName("list").setDescription("View watchlist"))
+
+        .addSubcommand((sub) =>
+          sub
+            .setName("setchannel")
+            .setDescription("Set alert channel")
+            .addChannelOption((option) => option.setName("channel").setDescription("Alert channel").setRequired(false)),
+        ),
+
+      async (interaction, cmd, args) => {
+        try {
+          if (!(await cacApi.utils.isAdmin(interaction.user.id))) {
+            return interaction.reply({
+              content: "You don't have permission to use this command.",
+              ephemeral: true,
+            })
+          }
+
+          const subCommand = args.subCommand
+
+          if (subCommand === "add") {
+            let name = args.name
+            let steamId = args.steamid
+
+            if (!name && !steamId) {
+              return interaction.reply({
+                content: "Please provide either a name or steamid.",
+                ephemeral: true,
+              })
+            }
+
+            let response = []
+
+            if (name) {
+              name = name.toLowerCase()
+              if (pluginConfig.watchlist.names.includes(name)) {
+                response.push(`Name **${name}** is already on the watchlist.`)
+              } else {
+                pluginConfig.watchlist.names.push(name)
+
+                cacApi.discord.send(pluginConfig.channel, `🔎 **${name}** (name) added to watchlist by ${interaction.user.username}`)
+
+                response.push(`Added name **${name}** to the watchlist.`)
+              }
+            }
+
+            if (steamId) {
+              steamId = steamId.toLowerCase().split(".")[0]
+              if (pluginConfig.watchlist.steamIds.includes(steamId)) {
+                response.push(`SteamID **${steamId}** is already on the watchlist.`)
+              } else {
+                pluginConfig.watchlist.steamIds.push(steamId)
+
+                cacApi.discord.send(pluginConfig.channel, `🔎 **${steamId}** (steamid) added to watchlist by ${interaction.user.username}`)
+
+                response.push(`Added steamid **${steamId}** to the watchlist.`)
+              }
+            }
+
+            savePluginConfig(pluginConfig)
+
+            return interaction.reply({
+              content: response.join("\n"),
+              ephemeral: true,
+            })
+          }
+
+          if (subCommand === "remove") {
+            let name = args.name
+            let steamId = args.steamid
+
+            if (!name && !steamId) {
+              return interaction.reply({
+                content: "Please provide either a name or steamid.",
+                ephemeral: true,
+              })
+            }
+
+            let response = []
+
+            if (name) {
+              name = name.toLowerCase()
+              const index = pluginConfig.watchlist.names.indexOf(name)
+
+              if (index === -1) {
+                response.push(`Name **${name}** is not on the watchlist.`)
+              } else {
+                pluginConfig.watchlist.names.splice(index, 1)
+                response.push(`Removed name **${name}** from the watchlist.`)
+              }
+            }
+
+            if (steamId) {
+              steamId = steamId.toLowerCase().split(".")[0]
+              const index = pluginConfig.watchlist.steamIds.indexOf(steamId)
+
+              if (index === -1) {
+                response.push(`SteamID **${steamId}** is not on the watchlist.`)
+              } else {
+                pluginConfig.watchlist.steamIds.splice(index, 1)
+                response.push(`Removed steamid **${steamId}** from the watchlist.`)
+              }
+            }
+
+            savePluginConfig(pluginConfig)
+
+            return interaction.reply({
+              content: response.join("\n"),
+              ephemeral: true,
+            })
+          }
+
+          if (subCommand === "list") {
+            const { names, steamIds } = pluginConfig.watchlist
+
+            if (!names.length && !steamIds.length) {
+              return interaction.reply({
+                content: "Watchlist is empty.",
+                ephemeral: true,
+              })
+            }
+
+            let response = ""
+
+            if (names.length) {
+              response += `**Names:**\n${names.map((n) => `- ${n}`).join("\n")}\n`
+            }
+
+            if (steamIds.length) {
+              response += `**Steam IDs:**\n${steamIds.map((s) => `- ${s}`).join("\n")}`
+            }
+
+            return interaction.reply({
+              content: response.trim(),
+              ephemeral: true,
+            })
+          }
+
+          if (subCommand === "setchannel") {
+            const channel = interaction.options.getChannel("channel") || interaction.channel
+
+            pluginConfig.channel = channel.id
+
+            savePluginConfig(pluginConfig)
+
+            return interaction.reply({
+              content: `Alert channel set to <#${channel.id}>`,
+              ephemeral: true,
+            })
+          }
+        } catch (err) {
+          return interaction.reply({
+            content: `Something went wrong: ${err.message}`,
+            ephemeral: true,
+          })
+        }
+      },
+    )
   },
 }
