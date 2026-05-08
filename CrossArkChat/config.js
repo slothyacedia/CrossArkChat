@@ -28,13 +28,13 @@ module.exports = {
     essentialPlugins: ["Permissions", "PlayerUtilities", "DinoUtilities", "ExtendedRcon", "UnicodeRcon", "RewardsEvolved"],
     ignoredResponses: ["Server received, But no response!!", "Deactivated", "Force respawning Wild Dinos!"],
     ignoredResponsePrefixes: ["AdminCmd: ", "SERVER: ", "SpawnDino_DS"],
-    tribeLogsRegex: /^Tribe\s+(.+?),\s+ID\s+(\d+):\s+Day\s+(\d+),\s+([\d:]+):\s+<RichColor Color="([^"]+)">([\s\S]+?)<\/?>\)?$/,
+    tribeLogsRegex: /^Tribe\s+(.+?),\s+ID\s+(\d+):\s+Day\s+(\d+),\s+([\d:]+):\s+(?:<RichColor Color="([^"]+)">)?([\s\S]+?)(?:<\/>)?\)?$/,
   },
   discord: {
     enabled: true,
     token: "",
     prefix: "cac.",
-    admins: [],
+    admins: [""],
     stripEmojis: true,
     channels: {
       chat: "",
@@ -42,6 +42,10 @@ module.exports = {
       leave: "", // Defaults to the chat channel
       tribeLogs: "",
       leftovers: "",
+    },
+    slashCommands: {
+      scope: "global", // "guild" or "global"
+      guild: "", // Guild id if scope is defined as guild
     },
   },
   formats: {
@@ -131,6 +135,6 @@ module.exports = {
     rconStatus: true,
     discordStatus: true,
     startup: true,
-    plugins: false,
+    plugins: true,
   },
 }

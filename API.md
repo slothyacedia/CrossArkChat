@@ -284,7 +284,78 @@ arkAgent.forEach((agent) => agent.send("hello world"))
 
 Returns: `Array`
 
+### `server`
+
+Exposes 2 sub-apis `sendChat(<name>, <message>)` and `sendCommand(<name>, <message>)` which allows chats to be sent and RCON commands to be executed
+
+Usage:
+
+```js
+// The name is the name that is defined for each server in servers in config.js
+cacApi.ark.server.sendChat("Island", "hello world")
+cacApi.ark.server.sendCommand("Island", "saveworld")
+```
+
+Returns: `String`
+
 ---
+
+### `servers`
+
+Exposes 2 sub-apis `sendChat(<message>)` and `sendCommand(<message>)` which allows chats to be sent and RCON commands to be executed
+
+Usage:
+
+```js
+// Sends it to all enabled servers
+cacApi.ark.servers.sendChat("hello world")
+cacApi.ark.servers.sendCommand("saveworld")
+```
+
+Returns: `String`
+
+---
+
+## Discord
+
+### `getClient()`
+
+Returns the client object
+
+Usage:
+
+```js
+let client = cacApi.discord.getClient()
+client.user.setPresence({
+  status: "online",
+  activities: [
+    {
+      name: "CrossArkChat.JS",
+      type: 0,
+    },
+  ],
+})
+```
+
+Returns: `clientObject`
+
+---
+
+### `send(<channelId>, <message>)`
+
+Sends a message to the channel id provided
+
+Usage:
+
+```js
+cacApi.discord.send(channelId, "hello world")
+```
+
+Returns: `null`
+
+---
+
+### Text Commands
 
 > [!NOTE]
 > This documentation is still WIP

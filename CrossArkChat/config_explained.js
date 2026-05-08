@@ -48,6 +48,10 @@ module.exports = {
       tribeLogs: "",
       leftovers: "", // Defaults to the tribe logs channel
     },
+    slashCommands: {
+      scope: "global", // "guild" or "global"
+      guild: "", // Guild id if scope is defined as guild
+    },
   },
   formats: {
     /*
@@ -143,6 +147,6 @@ module.exports = {
     rconStatus: true,
     discordStatus: true,
     startup: true,
-    plugins: false,
+    plugins: true,
   },
 }

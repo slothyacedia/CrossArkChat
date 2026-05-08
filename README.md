@@ -123,7 +123,7 @@ If not, send a chat message in-game and verify it appears on other servers
 
 # Commands
 
-`CrossArkChat.js` comes with 2 commands on the discord bot
+`CrossArkChat.js` comes with 3 commands on the discord bot by default
 
 Default prefix:
 
@@ -138,6 +138,7 @@ cac.
 ```text
 cac.reload
 aliases: cac.rc, cac.reloadconfig
+slash command: /reload
 ```
 
 Reloads configuration without restarting the program.
@@ -148,6 +149,7 @@ Reloads configuration without restarting the program.
 
 ```text
 cac.restart
+slash command: /restart
 ```
 
 Restarts the entire CrossArkChat process.
@@ -159,6 +161,7 @@ Restarts the entire CrossArkChat process.
 ```text
 cac.getplayerinfo <steamName / steamId>
 aliases: cac.gpi
+slash command: /getplayerinfo
 ```
 
 Get a player's info such as how long they've been connected and which server they're currently on.
@@ -167,17 +170,17 @@ Get a player's info such as how long they've been connected and which server the
 
 # CrossArkChat.js vs Cross-Ark-Chat
 
-| Feature              | CrossArkChat.js | Cross-Ark-Chat |
-| -------------------- | --------------- | -------------- |
-| Cross Server Chat    | Yes             | Yes            |
-| Discord Relay        | Yes             | Yes            |
-| Tribe Logs           | Yes             | Yes            |
-| Hot Reload           | Yes             | No             |
-| Open Source          | Yes             | No             |
-| Easier Config        | Yes             | No             |
-| Developer API        | Yes             | No             |
-| Extensible           | Yes             | No             |
-| More Flexible Config | No              | Yes            |
+| Feature           | CrossArkChat.js | Cross-Ark-Chat |
+| ----------------- | --------------- | -------------- |
+| Cross Server Chat | Yes             | Yes            |
+| Discord Relay     | Yes             | Yes            |
+| Tribe Logs        | Yes             | Yes            |
+| Flexible Configs  | Yes             | Yes            |
+| Hot Reload        | Yes             | No             |
+| Open Source       | Yes             | No             |
+| Easier Config     | Yes             | No             |
+| Developer API     | Yes             | No             |
+| Extensible        | Yes             | No             |
 
 ---
 
