@@ -6,7 +6,7 @@ const dotenv = require("dotenv")
 const { Rcon } = require("rcon-client")
 const { Client, GatewayIntentBits, EmbedBuilder, REST, Routes } = require("discord.js")
 const { GameDig } = require("gamedig")
-const CACJSversion = "v1.2.0-beta3 (slashCommands-args)"
+const CACJSversion = "v1.2.1-rc"
 const processId = process.pid.toString()
 const emitter = new EventEmitter()
 process.title = "CrossArkChat.js"
@@ -241,7 +241,8 @@ function queuePacket(packet) {
 
   let failed = false
   for (const chunk of chunks) {
-    channel.send(chunk).catch(() => {
+    channel.send(chunk).catch((error) => {
+      console.log(`[CrossArkChat] Discord Send Error: ${error.message}`)
       if (!failed) {
         failed = true
         cachePacket(packet, "Discord", true)
@@ -291,7 +292,9 @@ async function sendTribeLogs(force = false) {
         tribeLogFlushTiming = now
 
         setTimeout(() => {
-          sendTribeLogs(true).catch(() => {})
+          sendTribeLogs(true).catch((error) => {
+            console.log(`[CrossArkChat] Discord Send Error: ${error.message}`)
+          })
         }, 10000)
       }
     }
@@ -380,7 +383,9 @@ async function sendChatLogs(force = false) {
       if (now - chatLogFlushTiming > 10000) {
         chatLogFlushTiming = now
         setTimeout(() => {
-          sendChatLogs(true).catch(() => {})
+          sendChatLogs(true).catch((error) => {
+            console.log(`[CrossArkChat] Discord Send Error: ${error.message}`)
+          })
         }, 10000)
       }
     }
@@ -802,31 +807,6 @@ function createArkAgent(server) {
             return
           }
         }
-
-        if (pollPlayersFailCount >= 5 && previousPlayers.length) {
-          for (const player of previousPlayers) {
-            const timer = setTimeout(() => leaveCache.delete(player.steamId), gracePeriod)
-
-            leaveCache.set(player.steamId, {
-              sessionStart: player.data?.sessionStart,
-              timer,
-            })
-
-            handlePacket({
-              id: `${server.name}-leave-${Date.now()}`,
-              origin: server.name,
-              type: "leave",
-              server: server.name,
-              player: player.name,
-              text: "normal",
-              source: "forced-offline",
-              metadata: { forced: true, steamId: player.steamId, sessionStart: player.data?.sessionStart },
-            })
-          }
-
-          cache[cacheKey].players = []
-          saveCache()
-        }
       } finally {
         pollingPlayers = false
       }
@@ -890,16 +870,17 @@ function createArkAgent(server) {
       let color = null
 
       if (colorRaw) {
-        const parts = colorRaw.split(",").map((n) => Number(n.trim()))
+        const colorValues = colorRaw.split(",").map((n) => Number(n.trim()))
 
-        if (parts.length >= 3) {
-          const [r, g, b] = parts
+        if (colorValues.length >= 3) {
+          const [r, g, b] = colorValues
 
-          const toHex = (v) => Math.round(Math.max(0, Math.min(1, v)) * 255)
+          const toHex = (value) => Math.round(Math.max(0, Math.min(1, value)) * 255)
 
-          color = (toHex(r) << 16) + (toHex(g) << 8) + toHex(b)
+          color = ((toInt(r) << 16) | (toInt(g) << 8) | toInt(b)) >>> 0
         }
       }
+
       message = message.replace(/<\/?>/g, "").trim()
       handlePacket({
         id: `${server.name}-tribelog-${Date.now()}`,

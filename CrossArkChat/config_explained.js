@@ -80,7 +80,7 @@ module.exports = {
     toServers: {
       join: "{player} joined {serverName}",
       leave: "{player} left {serverName}",
-      chat: `[{serverName}] {player}: {text}`,
+      chat: "[{serverName}] {player}: {text}",
     },
   },
   replacements: {

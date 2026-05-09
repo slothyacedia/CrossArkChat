@@ -41,7 +41,7 @@ module.exports = {
       join: "", // Defaults to the chat channel
       leave: "", // Defaults to the chat channel
       tribeLogs: "",
-      leftovers: "",
+      leftovers: "", // Defaults to the tribe logs channel
     },
     slashCommands: {
       scope: "global", // "guild" or "global"
@@ -74,7 +74,7 @@ module.exports = {
     toServers: {
       join: "{player} joined {serverName}",
       leave: "{player} left {serverName}",
-      chat: `[{serverName}] {player}: {text}`,
+      chat: "[{serverName}] {player}: {text}",
     },
   },
   replacements: {

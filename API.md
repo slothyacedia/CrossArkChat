@@ -302,7 +302,7 @@ Returns: `String`
 
 ### `servers`
 
-Exposes 2 sub-apis `sendChat(<message>)` and `sendCommand(<message>)` which allows chats to be sent and RCON commands to be executed
+Exposes 2 sub-APIs `sendChat(<message>)` and `sendCommand(<message>)` which allows chats to be sent and RCON commands to be executed
 
 Usage:
 
@@ -356,6 +356,134 @@ Returns: `null`
 ---
 
 ### Text Commands
+
+Exposes 2 sub-APIs:<br>
+
+- `register(<names>, <handler>)`
+- `unregister(<names>)`
+
+Usage:
+
+```js
+let textCmd = cacApi.discord.commands.text
+textCmd.register(["cmd", "cmd2"], async (message, cmd, args) => {
+  /*
+  message => message object
+  cmd => command used
+  args => list of arguments
+  */
+  message.reply("hello world")
+  console.log(cmd)
+  console.log(args.join(", "))
+})
+
+// Removes cmd2 from the command pool
+textCmd.unregister(["cmd2"])
+```
+
+Returns: `null`
+
+---
+
+### Slash Commands
+
+Exposes 4 sub-APIs:<br>
+
+- `register(<name>, <commandData>, <handler>)`
+- `unregister(<names>)`
+- `getCommands()`
+- `implement()`
+
+Usage:
+
+```js
+let slashCmd = cacApi.discord.commands.slash
+let { SlashCommandBuilder } = require("discord.js")
+slashCmd.register("cmd", new SlashCommandBuilder().setName("cmd"), async (interaction, cmd, args) => {
+  /*
+  interaction => interaction object
+  cmd => command used
+  args => json object for parameters
+  */
+  interaction.reply("hello world")
+  console.log(cmd)
+  console.log(args.join(", "))
+})
+
+// Removes cmd from the command pool
+slashCmd.unregister("cmd")
+
+slashCommandDatas = slashCmd.getCommands()
+slashCmd.implement() // Register them to discord to make them usable
+```
+
+Returns: `null`
+
+---
+
+## Plugins
+
+### `load(<filePath>)`
+
+Loads a plugin from the file path given
+
+Usage:
+
+```js
+const path = require("node:path")
+const fs = require("node:fs")
+
+let filePath = path.join(process.cwd(), "plugins", pluginName)
+cacApi.plugins.load(filePath)
+```
+
+Returns: `null`
+
+---
+
+### `loadAll()`
+
+Loads all plugins in the `plugins` folder
+
+Usage:
+
+```js
+cacApi.plugins.loadAll()
+```
+
+Returns: `null`
+
+---
+
+### `loaded()`
+
+Returns a list of loaded plugins
+
+Usage:
+
+```js
+let plugins = cacApi.plugins.loaded()
+console.log(plugins)
+```
+
+Returns: `Map`
+
+---
+
+### `reload(<name>)`
+
+Reloads a plugin by the plugin name
+
+Usage:
+
+```js
+cacApi.plugins.reload("CrossArkChat")
+// Reloads the base CrossArkChat plugin, which supplies 3 base commands
+```
+
+Returns: `null`
+
+---
 
 > [!NOTE]
 > This documentation is still WIP
