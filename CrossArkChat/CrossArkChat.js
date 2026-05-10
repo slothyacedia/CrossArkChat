@@ -6,7 +6,7 @@ const dotenv = require("dotenv")
 const { Rcon } = require("rcon-client")
 const { Client, GatewayIntentBits, EmbedBuilder, REST, Routes } = require("discord.js")
 const { GameDig } = require("gamedig")
-const CACJSversion = "v1.2.1-rc"
+const CACJSversion = "v1.2.2-rc"
 const processId = process.pid.toString()
 const emitter = new EventEmitter()
 process.title = "CrossArkChat.js"
@@ -877,7 +877,7 @@ function createArkAgent(server) {
 
           const toHex = (value) => Math.round(Math.max(0, Math.min(1, value)) * 255)
 
-          color = ((toInt(r) << 16) | (toInt(g) << 8) | toInt(b)) >>> 0
+          color = ((toHex(r) << 16) | (toHex(g) << 8) | toHex(b)) >>> 0
         }
       }
 
