@@ -1,5 +1,6 @@
 # CrossArkChat.js
 
+![CrossArkChat](https://github.com/slothyacedia/CrossArkChat/blob/main/.branding/CAC_512_290.svg)
 A JavaScript reimplementation of SpikeyDragoon’s Cross-Ark-Chat for ARK clusters, with support for cross-server chat, tribe log forwarding, Discord integration, hot-reloadable configs, and plugin loading
 
 ## Features

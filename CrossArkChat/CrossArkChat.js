@@ -6,7 +6,7 @@ const dotenv = require("dotenv")
 const { Rcon } = require("rcon-client")
 const { Client, GatewayIntentBits, EmbedBuilder, REST, Routes } = require("discord.js")
 const { GameDig } = require("gamedig")
-const CACJSversion = "v1.2.2-rc"
+const CACJSversion = "v1.2.3-rc (Compiled)"
 const processId = process.pid.toString()
 const emitter = new EventEmitter()
 process.title = "CrossArkChat.js"
@@ -16,23 +16,25 @@ console.log(`(C) Acedia 2026`)
 console.log(`PID: ${processId}`)
 console.log(``)
 
+const runtimeDir = process.pkg ? path.dirname(process.execPath) : __dirname
+
 // PID
-fs.writeFileSync(path.join(__dirname, "PID.txt"), processId)
+fs.writeFileSync(path.join(runtimeDir, "PID.txt"), processId)
 
 // Config
 function loadConfig() {
   console.log("[CrossArkChat] Loading Config...")
 
-  if (fs.existsSync(path.join(__dirname, "config.js"))) {
-    delete require.cache[require.resolve(path.join(__dirname, "config.js"))]
+  if (fs.existsSync(path.join(runtimeDir, "config.js"))) {
+    delete require.cache[require.resolve(path.join(runtimeDir, "config.js"))]
     console.log(`[CrossArkChat] Loaded config.js`)
-    return require(path.join(__dirname, "config.js"))
+    return require(path.join(runtimeDir, "config.js"))
   }
 
-  if (fs.existsSync(path.join(__dirname, "config.json"))) {
-    delete require.cache[require.resolve(path.join(__dirname, "config.json"))]
+  if (fs.existsSync(path.join(runtimeDir, "config.json"))) {
+    delete require.cache[require.resolve(path.join(runtimeDir, "config.json"))]
     console.log(`[CrossArkChat] Loaded config.json`)
-    return require(path.join(__dirname, "config.json"))
+    return require(path.join(runtimeDir, "config.json"))
   }
 
   throw new Error(`[CrossArkChat] Unable To Locate A Config File...`)
@@ -51,9 +53,9 @@ let arkAgents = []
 let cache = {}
 let leaveCache = new Map()
 let saveCacheTimeout = null
-if (fs.existsSync(path.join(__dirname, "cache.json"))) {
+if (fs.existsSync(path.join(runtimeDir, "cache.json"))) {
   try {
-    cache = require(path.join(__dirname, "cache.json"))
+    cache = require(path.join(runtimeDir, "cache.json"))
   } catch {
     cache = {}
   }
@@ -77,7 +79,7 @@ function saveCache() {
       return
     }
 
-    fs.writeFileSync(path.join(__dirname, "cache.json"), serialized)
+    fs.writeFileSync(path.join(runtimeDir, "cache.json"), serialized)
 
     lastSavedCache = serialized
     saveCacheTimeout = null
@@ -976,7 +978,7 @@ let slashCommands = new Map()
 let loadedPlugins = new Map()
 
 async function loadPlugins(forced = false) {
-  const pluginsPath = path.join(__dirname, "plugins")
+  const pluginsPath = path.join(runtimeDir, "plugins")
   if (!fs.existsSync(pluginsPath)) return
 
   const folders = fs.readdirSync(pluginsPath).filter((f) => {
