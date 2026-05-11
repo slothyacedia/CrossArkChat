@@ -1,7 +1,7 @@
 # CrossArkChat.js
 
 <div align="center">
-  <img src="https://github.com/slothyacedia/CrossArkChat/blob/main/.branding/CrossArkChat_512_340.svg" height="150" />
+  <img src="https://github.com/slothyacedia/CrossArkChat/blob/main/.branding/CAC_512_290.svg" height="150" />
 </div>
 
 A JavaScript reimplementation of SpikeyDragoon’s Cross-Ark-Chat for ARK clusters, with support for cross-server chat, tribe log forwarding, Discord integration, hot-reloadable configs, and plugin loading
