@@ -1,0 +1,10 @@
+.gitattributes export-ignore
+
+.toolchain/ export-ignore
+.branding/ export-ignore
+.vscode/ export-ignore
+.github/ export-ignore
+Plugins/ export-ignore
+
+README.md export-ignore
+API.md export-ignore
