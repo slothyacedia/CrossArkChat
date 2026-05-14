@@ -25,25 +25,13 @@ module.exports = {
     commandTimeout: 1000, // Timeout a command after x ms
     transferGracePeriod: 60000, // Caches the player's session time and removes after this grace period in ms
     chatCommand: "serverchat", // Command used to chat
-    essentialPlugins: [
-      "Permissions",
-      "PlayerUtilities",
-      "DinoUtilities",
-      "ExtendedRcon",
-      "UnicodeRcon",
-      "RewardsEvolved",
-    ],
+    essentialPlugins: ["Permissions", "PlayerUtilities", "DinoUtilities", "ExtendedRcon", "UnicodeRcon", "RewardsEvolved"],
     // Plugins that will be loaded on connect
-    ignoredResponses: [
-      "Server received, But no response!!",
-      "Deactivated",
-      "Force respawning Wild Dinos!",
-    ],
+    ignoredResponses: ["Server received, But no response!!", "Deactivated", "Force respawning Wild Dinos!"],
     // RCON responses that will be ignored and not processed
     ignoredResponsePrefixes: ["AdminCmd: ", "SERVER: ", "SpawnDino_DS"],
     // RCON response prefixes that will result in the response being ignored and not processed
-    tribeLogsRegex:
-      /^Tribe\s+(.+?),\s+ID\s+(\d+):\s+Day\s+(\d+),\s+([\d:]+):\s+(?:<RichColor Color="([^"]+)">)?([\s\S]+?)(?:<\/>)?\)?$/,
+    tribeLogsRegex: /^Tribe\s+(.+?),\s+ID\s+(\d+):\s+Day\s+(\d+),\s+([\d:]+):\s+(?:<RichColor Color="([^"]+)">)?([\s\S]+?)(?:<\/>)?\)?$/,
     // Tribe log detection regex (DO NOT CHANGE IF YOU'RE UNSURE)
   },
   discord: {
@@ -161,4 +149,4 @@ module.exports = {
     startup: true,
     plugins: true,
   },
-};
+}
