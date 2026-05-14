@@ -25,10 +25,22 @@ module.exports = {
     commandTimeout: 1000,
     transferGracePeriod: 60000,
     chatCommand: "serverchat",
-    essentialPlugins: ["Permissions", "PlayerUtilities", "DinoUtilities", "ExtendedRcon", "UnicodeRcon", "RewardsEvolved"],
-    ignoredResponses: ["Server received, But no response!!", "Deactivated", "Force respawning Wild Dinos!"],
+    essentialPlugins: [
+      "Permissions",
+      "PlayerUtilities",
+      "DinoUtilities",
+      "ExtendedRcon",
+      "UnicodeRcon",
+      "RewardsEvolved",
+    ],
+    ignoredResponses: [
+      "Server received, But no response!!",
+      "Deactivated",
+      "Force respawning Wild Dinos!",
+    ],
     ignoredResponsePrefixes: ["AdminCmd: ", "SERVER: ", "SpawnDino_DS"],
-    tribeLogsRegex: /^Tribe\s+(.+?),\s+ID\s+(\d+):\s+Day\s+(\d+),\s+([\d:]+):\s+(?:<RichColor Color="([^"]+)">)?([\s\S]+?)(?:<\/>)?\)?$/,
+    tribeLogsRegex:
+      /^Tribe\s+(.+?),\s+ID\s+(\d+):\s+Day\s+(\d+),\s+([\d:]+):\s+(?:<RichColor Color="([^"]+)">)?([\s\S]+?)(?:<\/>)?\)?$/,
   },
   discord: {
     enabled: true,
@@ -137,4 +149,4 @@ module.exports = {
     startup: true,
     plugins: true,
   },
-}
+};
