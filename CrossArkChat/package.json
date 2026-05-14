@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "ARK Survival Evolved Cluster Chat w/ Discord Integration",
   "main": "CrossArkChat.js",
+  "bin": "CrossArkChat.js",
   "type": "commonjs",
   "scripts": {
     "start": "node CrossArkChat.js"
@@ -15,5 +16,15 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "pkg": {
+    "scripts": "CrossArkChat.js",
+    "assets": [
+      "plugins/**/*",
+      "config.js",
+      "config.json",
+      "cache.json",
+      "*.env"
+    ]
   }
 }

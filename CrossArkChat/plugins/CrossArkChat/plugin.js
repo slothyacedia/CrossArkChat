@@ -9,7 +9,7 @@ let commandsList = Object.values(pluginCommands).flat()
 
 module.exports = {
   name: "CrossArkChat",
-  version: "v2.0.2",
+  version: "v2.0.4",
 
   teardown(cacApi) {
     let textCmd = cacApi.discord.commands.text
@@ -141,21 +141,21 @@ module.exports = {
         switch (reloadType) {
           case "config": {
             cacApi.config.write(cacApi.config.load())
-            console.log(`[CrossArkChat] Config Reloaded By ${message.member.nickname}(${message.author.id})`)
+            console.log(`[Plugin: ${this.name}] Config Reloaded By ${message.member.nickname}(${message.author.id})`)
             return message.reply("Config Reload Success")
             break
           }
 
           case "plugins": {
             await cacApi.plugins.loadAll()
-            console.log(`[CrossArkChat] Plugins Reloaded By ${message.member.nickname}(${message.author.id})`)
+            console.log(`[Plugin: ${this.name}] Plugins Reloaded By ${message.member.nickname}(${message.author.id})`)
             return message.reply("Plugins Reload Success")
             break
           }
 
           case "commands": {
             await cacApi.plugins.reload("CrossArkChat")
-            console.log(`[CrossArkChat] Commands Reloaded By ${message.member.nickname}(${message.author.id})`)
+            console.log(`[Plugin: ${this.name}] Commands Reloaded By ${message.member.nickname}(${message.author.id})`)
             return message.reply("Commands Reload Success")
             break
           }
@@ -177,7 +177,7 @@ module.exports = {
 
         const childProc = await cacApi.utils.modMan.require("node:child_process")
 
-        console.log(`[CrossArkChat] Restart Requested By ${message.member.nickname}(${message.author.id})`)
+        console.log(`[Plugin: ${this.name}] Restart Requested By ${message.member.nickname}(${message.author.id})`)
         await message.reply("Restarting...")
 
         const child = childProc.spawn(process.argv[0], process.argv.slice(1), {
@@ -186,7 +186,7 @@ module.exports = {
         })
         child.unref()
 
-        console.log(`[CrossArkChat] Restart Spawned, Exiting...`)
+        console.log(`[Plugin: ${this.name}] Restart Spawned, Exiting...`)
         console.log(``)
         process.exit(0)
       } catch (err) {
@@ -225,7 +225,7 @@ module.exports = {
           if (matches.length === 0) {
             return interaction.reply({
               content: "No Player Found",
-              ephemeral: true,
+              flags: 64,
             })
           }
 
@@ -275,12 +275,12 @@ module.exports = {
 
           return interaction.reply({
             content: reply,
-            ephemeral: true,
+            flags: 64,
           })
         } catch {
           return interaction.reply({
             content: "Something Went Wrong...",
-            ephemeral: true,
+            flags: 64,
           })
         }
       },
@@ -313,21 +313,21 @@ module.exports = {
           switch (reloadType) {
             case "config": {
               cacApi.config.write(cacApi.config.load())
-              console.log(`[CrossArkChat] Config Reloaded By ${interaction.user.username}(${interaction.user.id})`)
+              console.log(`[Plugin: ${this.name}] Config Reloaded By ${interaction.user.username}(${interaction.user.id})`)
               reply = "Config Reload Success"
               break
             }
 
             case "plugins": {
               await cacApi.plugins.loadAll()
-              console.log(`[CrossArkChat] Plugins Reloaded By ${interaction.user.username}(${interaction.user.id})`)
+              console.log(`[Plugin: ${this.name}] Plugins Reloaded By ${interaction.user.username}(${interaction.user.id})`)
               reply = "Plugins Reload Success"
               break
             }
 
             case "commands": {
               await cacApi.plugins.reload("CrossArkChat")
-              console.log(`[CrossArkChat] Commands Reloaded By ${interaction.user.username}(${interaction.user.id})`)
+              console.log(`[Plugin: ${this.name}] Commands Reloaded By ${interaction.user.username}(${interaction.user.id})`)
               reply = "Commands Reload Success"
               break
             }
@@ -335,12 +335,12 @@ module.exports = {
 
           return interaction.reply({
             content: reply,
-            ephemeral: true,
+            flags: 64,
           })
         } catch (err) {
           return interaction.reply({
             content: `Reload Failed, ${err.message}`,
-            ephemeral: true,
+            flags: 64,
           })
         }
       },
@@ -359,13 +359,13 @@ module.exports = {
 
           const childProc = await cacApi.utils.modMan.require("node:child_process")
 
-          console.log(`[CrossArkChat] Restart Requested By ${interaction.user.username}(${interaction.user.id})`)
+          console.log(`[Plugin: ${this.name}] Restart Requested By ${interaction.user.username}(${interaction.user.id})`)
 
           let reply = "Restarting..."
 
           await interaction.reply({
             content: reply,
-            ephemeral: true,
+            flags: 64,
           })
 
           const child = childProc.spawn(process.argv[0], process.argv.slice(1), {
@@ -375,14 +375,14 @@ module.exports = {
 
           child.unref()
 
-          console.log(`[CrossArkChat] Restart Spawned, Exiting...`)
+          console.log(`[Plugin: ${this.name}] Restart Spawned, Exiting...`)
           console.log(``)
 
           process.exit(0)
         } catch (err) {
           return interaction.reply({
             content: `Restart Failed, ${err.message}`,
-            ephemeral: true,
+            flags: 64,
           })
         }
       },

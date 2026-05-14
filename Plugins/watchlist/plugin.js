@@ -6,7 +6,7 @@ let pluginCommands = ["watchlist", "wl"]
 
 module.exports = {
   name: "Watchlist",
-  version: "v2.0.2",
+  version: "v2.0.3",
 
   teardown(cacApi) {
     let textCmd = cacApi.discord.commands.text
@@ -213,7 +213,7 @@ module.exports = {
           if (!(await cacApi.utils.isAdmin(interaction.user.id))) {
             return interaction.reply({
               content: "You don't have permission to use this command.",
-              ephemeral: true,
+              flags: 64,
             })
           }
 
@@ -226,7 +226,7 @@ module.exports = {
             if (!name && !steamId) {
               return interaction.reply({
                 content: "Please provide either a name or steamid.",
-                ephemeral: true,
+                flags: 64,
               })
             }
 
@@ -262,7 +262,7 @@ module.exports = {
 
             return interaction.reply({
               content: response.join("\n"),
-              ephemeral: true,
+              flags: 64,
             })
           }
 
@@ -273,7 +273,7 @@ module.exports = {
             if (!name && !steamId) {
               return interaction.reply({
                 content: "Please provide either a name or steamid.",
-                ephemeral: true,
+                flags: 64,
               })
             }
 
@@ -307,7 +307,7 @@ module.exports = {
 
             return interaction.reply({
               content: response.join("\n"),
-              ephemeral: true,
+              flags: 64,
             })
           }
 
@@ -317,7 +317,7 @@ module.exports = {
             if (!names.length && !steamIds.length) {
               return interaction.reply({
                 content: "Watchlist is empty.",
-                ephemeral: true,
+                flags: 64,
               })
             }
 
@@ -333,7 +333,7 @@ module.exports = {
 
             return interaction.reply({
               content: response.trim(),
-              ephemeral: true,
+              flags: 64,
             })
           }
 
@@ -346,13 +346,13 @@ module.exports = {
 
             return interaction.reply({
               content: `Alert channel set to <#${channel.id}>`,
-              ephemeral: true,
+              flags: 64,
             })
           }
         } catch (err) {
           return interaction.reply({
             content: `Something went wrong: ${err.message}`,
-            ephemeral: true,
+            flags: 64,
           })
         }
       },
