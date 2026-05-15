@@ -15,7 +15,7 @@ module.exports = {
   },
 
   setup(cacApi) {
-    const { SlashCommandBuilder } = require("discord.js")
+    const { SlashCommandBuilder } = cacApi.utils.modules.djs
     let textCmd = cacApi.discord.commands.text
     let slashCmd = cacApi.discord.commands.slash
     const pluginDir = __dirname

@@ -17,7 +17,7 @@ module.exports = {
   },
 
   setup(cacApi) {
-    const { SlashCommandBuilder } = require("discord.js")
+    const { SlashCommandBuilder } = cacApi.utils.modules.djs
     let textCmd = cacApi.discord.commands.text
     let slashCmd = cacApi.discord.commands.slash
 
@@ -175,7 +175,7 @@ module.exports = {
       try {
         if (!(await cacApi.utils.isAdmin(message.author.id))) throw new Error("Not An Admin")
 
-        const childProc = await cacApi.utils.modMan.require("node:child_process")
+        const childProc = cacApi.utils.modules.child_process
 
         console.log(`[Plugin: ${this.name}] Restart Requested By ${message.member.nickname}(${message.author.id})`)
         await message.reply("Restarting...")
@@ -357,7 +357,7 @@ module.exports = {
             throw new Error("Not An Admin")
           }
 
-          const childProc = await cacApi.utils.modMan.require("node:child_process")
+          const childProc = cacApi.utils.modules.child_process
 
           console.log(`[Plugin: ${this.name}] Restart Requested By ${interaction.user.username}(${interaction.user.id})`)
 

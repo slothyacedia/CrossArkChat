@@ -1,12 +1,18 @@
 const fs = require("node:fs")
 const path = require("node:path")
 const childProc = require("node:child_process")
-const EventEmitter = require("node:events")
+const events = require("node:events")
 const dotenv = require("dotenv")
-const { Rcon } = require("rcon-client")
-const { Client, GatewayIntentBits, EmbedBuilder, REST, Routes } = require("discord.js")
-const { GameDig } = require("gamedig")
-const CACJSversion = "v1.2.3-rc (Compiled)"
+const rconClient = require("rcon-client")
+const djs = require("discord.js")
+const gamedig = require("gamedig")
+
+const { Rcon } = rconClient
+const { GameDig } = gamedig
+const { Client, GatewayIntentBits, REST, Routes, EmbedBuilder } = djs
+const EventEmitter = events.EventEmitter
+
+const CACJSversion = "v1.2.4-rc (API Modules)"
 const processId = process.pid.toString()
 const emitter = new EventEmitter()
 process.title = "CrossArkChat.js"
@@ -1247,6 +1253,16 @@ let cacApi = {
     },
     handlePacket,
     modMan,
+    modules: {
+      gamedig: gamedig,
+      djs: djs,
+      dotenv: dotenv,
+      rcon: rconClient,
+      fs: fs,
+      path: path,
+      child_process: childProc,
+      events: events,
+    },
   },
 
   config: {
