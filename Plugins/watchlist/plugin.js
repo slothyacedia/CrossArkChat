@@ -6,15 +6,15 @@ let pluginCommands = ["watchlist", "wl"]
 
 module.exports = {
   name: "Watchlist",
-  version: "v2.0.3",
+  version: "v2.0.4",
 
-  teardown(cacApi) {
+  async teardown(cacApi) {
     let textCmd = cacApi.discord.commands.text
     textCmd.unregister(pluginCommands)
     if (onPacket) cacApi.events.off("packet", onPacket)
   },
 
-  setup(cacApi) {
+  async setup(cacApi) {
     const { SlashCommandBuilder } = cacApi.utils.modules.djs
     let textCmd = cacApi.discord.commands.text
     let slashCmd = cacApi.discord.commands.slash

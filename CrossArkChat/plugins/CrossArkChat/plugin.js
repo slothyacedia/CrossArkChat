@@ -9,14 +9,14 @@ let commandsList = Object.values(pluginCommands).flat()
 
 module.exports = {
   name: "CrossArkChat",
-  version: "v2.0.4",
+  version: "v2.0.5",
 
-  teardown(cacApi) {
+  async teardown(cacApi) {
     let textCmd = cacApi.discord.commands.text
     textCmd.unregister(commandsList)
   },
 
-  setup(cacApi) {
+  async setup(cacApi) {
     const { SlashCommandBuilder } = cacApi.utils.modules.djs
     let textCmd = cacApi.discord.commands.text
     let slashCmd = cacApi.discord.commands.slash

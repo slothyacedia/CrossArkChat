@@ -6,14 +6,14 @@ let poller = null
 
 module.exports = {
   name: "More Player Info",
-  version: "v1.0.0",
+  version: "v1.0.1",
 
-  teardown(cacApi) {
+  async teardown(cacApi) {
     if (onPacket) cacApi.events.off("packet", onPacket)
     if (poller) clearInterval(poller)
   },
 
-  setup(cacApi) {
+  async setup(cacApi) {
     let getCache = () => cacApi.cache.get()
     let arkAgents = cacApi.ark.getAgents()
 
