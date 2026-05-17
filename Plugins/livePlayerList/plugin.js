@@ -85,7 +85,7 @@ module.exports = {
     const pluginConfig = loadPluginConfig()
 
     if (!pluginConfig.channel) {
-      console.warn(`[Live Player List] No channel configured.`)
+      console.warn(`[${this.name}] No channel configured.`)
       return
     }
 
@@ -94,7 +94,7 @@ module.exports = {
     let channel = client.channels.cache.get(pluginConfig.channel) || (await client.channels.fetch(pluginConfig.channel))
 
     if (!channel) {
-      console.warn(`[Live Player List] Channel not found.`)
+      console.warn(`[${this.name}] Channel not found.`)
       return
     }
 
@@ -112,7 +112,7 @@ module.exports = {
 
         await message.edit({ embeds: [embed] })
       } catch (err) {
-        console.error("[Live Player List] Refresh failed:", err)
+        console.error(`[${this.name}] Refresh failed:`, err)
       }
 
       poller = setTimeout(refresh, getDelay())
