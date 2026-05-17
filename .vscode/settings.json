@@ -4,4 +4,8 @@
   "prettier.semi": false,
   "prettier.printWidth": 160,
   "editor.tabSize": 2,
+  "github.copilot.nextEditSuggestions.allowWhitespaceOnlyChanges": false,
+  "github.copilot.nextEditSuggestions.enabled": false,
+  "github.copilot.nextEditSuggestions.extendedRange": false,
+  "github.copilot.nextEditSuggestions.fixes": false,
 }
