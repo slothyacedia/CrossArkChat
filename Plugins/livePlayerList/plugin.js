@@ -6,7 +6,7 @@ let poller = null
 
 module.exports = {
   name: "Live Player List",
-  version: "v1.0.1",
+  version: "v1.0.3",
 
   async teardown(cacApi) {
     if (onPacket) cacApi.events.off("packet", onPacket)
@@ -69,23 +69,45 @@ module.exports = {
       return players
     }
 
-    let createEmbed = (players) => {
+    let createEmbeds = (players) => {
+      let embeds = []
+
       let embed = new EmbedBuilder().setTitle("Live Player List").setTimestamp(new Date())
 
+      let fieldCount = 0
+
       for (let server in players) {
+        let value = players[server].join("\n") || "No players online"
+
+        if (value.length > 1024) {
+          value = value.slice(0, 1020) + "..."
+        }
+
+        if (fieldCount >= 25) {
+          embeds.push(embed)
+
+          embed = new EmbedBuilder().setTitle("Live Player List (Continued)").setTimestamp(new Date())
+
+          fieldCount = 0
+        }
+
         embed.addFields({
           name: server,
-          value: players[server].join("\n") || "No players online",
+          value,
         })
+
+        fieldCount++
       }
 
-      return embed
+      embeds.push(embed)
+
+      return embeds
     }
 
     const pluginConfig = loadPluginConfig()
 
     if (!pluginConfig.channel) {
-      console.warn(`[${this.name}] No channel configured.`)
+      console.log(`[${this.name}] No channel configured.`)
       return
     }
 
@@ -94,7 +116,7 @@ module.exports = {
     let channel = client.channels.cache.get(pluginConfig.channel) || (await client.channels.fetch(pluginConfig.channel))
 
     if (!channel) {
-      console.warn(`[${this.name}] Channel not found.`)
+      console.log(`[${this.name}] Channel not found.`)
       return
     }
 
@@ -108,19 +130,22 @@ module.exports = {
     let refresh = async () => {
       try {
         let players = getPlayerList()
-        let embed = createEmbed(players)
+        let embed = createEmbeds(players)
 
-        await message.edit({ embeds: [embed] })
+        await message.edit({ embeds: [...embed] })
       } catch (err) {
-        console.error(`[${this.name}] Refresh failed:`, err)
+        console.log(`[${this.name}] Refresh failed:`, err)
       }
+    }
 
-      poller = setTimeout(refresh, getDelay())
+    let refreshLoop = async () => {
+      refresh()
+      poller = setTimeout(refreshLoop, getDelay())
     }
 
     await refresh()
 
-    poller = setTimeout(refresh, getDelay())
+    poller = setTimeout(refreshLoop, getDelay())
 
     onPacket = async function (packet) {
       if (!["join", "leave"].includes(packet.type)) return

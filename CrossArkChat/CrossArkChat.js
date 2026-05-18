@@ -1175,7 +1175,7 @@ if (config.discord.enabled == true) {
 
 // Startup
 async function start() {
-  config.servers.map((server) => {
+  config.servers.forEach((server) => {
     if (!server.enabled) return
     arkAgents.push(createArkAgent(server))
     cache[server.name] ??= {}
@@ -1187,13 +1187,17 @@ async function start() {
     await discordBot()
   }
 
+  await loadPlugins()
+
+  if (config.discord.enabled && clientReady) {
+    await registerSlash({ ...config.discord.slashCommands })
+  }
+
   if (config.logging.startup) {
     console.log(`[CrossArkChat] CrossArkChat Started`)
   }
 
   saveCache()
-  await loadPlugins()
-  await registerSlash({ ...config.discord.slashCommands })
 }
 
 process.on("uncaughtException", (err) => {
