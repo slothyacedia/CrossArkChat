@@ -1189,7 +1189,7 @@ async function start() {
 
   await loadPlugins()
 
-  if (config.discord.enabled && clientReady) {
+  if (config.discord.enabled) {
     await registerSlash({ ...config.discord.slashCommands })
   }
 
