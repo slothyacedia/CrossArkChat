@@ -19,26 +19,30 @@ It provides access to:
 ```js
 {
   utils: {
-    isAdmin,
-    handlePacket,
-    modMan,
+    isAdmin(),
+    handlePacket(),
+    modMan(),
+    modules: {
+      gamedig,
+      djs,
+      dotenv,
+      rcon,
+      fs,
+      path,
+      child_process,
+      events,
+    },
   },
 
   config: {
-    get: () => config,
-    load: loadConfig,
-    write: (newConfig) => {
-      Object.keys(config).forEach((key) => delete config[key])
-      Object.assign(config, newConfig)
-    },
+    get(),
+    load(),
+    write(),
   },
 
   cache: {
-    get: () => cache,
-    write: (newCache) => {
-      Object.keys(cache).forEach((key) => delete cache[key])
-      Object.assign(cache, newCache)
-    },
+    get(),
+    write(),
   },
 
   events: {
@@ -47,48 +51,42 @@ It provides access to:
   },
 
   ark: {
-    getAgents: () => arkAgents,
+    getAgents(),
 
-    message: {
-      toServers: (message) => arkAgents.forEach((agent) => agent.send(message)),
-      toServer: (name, message) => arkAgents.find((agent) => agent.name === name)?.send(message),
+    server: {
+      sendChat: (name, message) => arkAgents.find((agent) => agent.name === name)?.send(message),
+      sendCommand: (name, command) => arkAgents.find((agent) => agent.name === name)?.sendCommand(command),
     },
 
-    command: {
-      toServers: (command) => arkAgents.forEach((agent) => agent.sendCommand(command)),
-      toServer: (name, command) => arkAgents.find((agent) => agent.name === name)?.sendCommand(command),
+    servers: {
+      sendChat: (message) => arkAgents.forEach((agent) => agent.send(message)),
+      sendCommand: (command) => arkAgents.forEach((agent) => agent.sendCommand(command)),
     },
   },
 
   discord: {
-    getClient: () => client,
+    getClient(),
     send: (channelId, message) => client?.channels.cache.get(channelId)?.send(message),
 
     commands: {
-      register: registerCommand,
-      unregister: (names) => {
-        if (Array.isArray(names)) {
-          names.forEach((n) => {
-            if (discordCommands.has(n.toLowerCase())) {
-              discordCommands.delete(n.toLowerCase())
-            }
-          })
-        } else {
-          discordCommands.delete(names.toLowerCase())
-        }
+      text: {
+        register(),
+        unregister(),
+      },
+
+      slash: {
+        register(),
+        unregister(),
+        implement(),
       },
     },
   },
 
   plugins: {
-    load: loadPlugin,
-    loadAll: loadPlugins,
+    load(),
+    loadAll(),
     loaded: () => loadedPlugins,
-    reload: async (name) => {
-      const filePath = loadedPlugins.get(name)
-      if (!filePath) throw new Error(`Plugin "${name}" not found`)
-      await loadPlugin(filePath)
-    },
+    reload(),
   },
 }
 ```
@@ -150,6 +148,22 @@ let dotenv = cacApi.utils.modMan.require("dotenv")
 ```
 
 Returns: `require()`
+
+---
+
+### `modules`
+
+Allows access of baseline modules such as `fs`, `path`, `rcon-client`, `discord.js`, etc.
+
+Usage:
+
+```js
+let djs = cacApi.utils.modules.djs
+const { EmbedBuilder } = djs
+let embed = new EmbedBuilder()
+```
+
+Returns: `Module`
 
 ---
 
