@@ -301,7 +301,7 @@ Returns: `Array`
 
 ### `server`
 
-Exposes 2 sub-apis `sendChat(<name>, <message>)` and `sendCommand(<name>, <message>)` which allows chats to be sent and RCON commands to be executed
+Exposes 2 sub-APIs `sendChat(<name>, <message>)` and `sendCommand(<name>, <message>)` which allows chats to be sent and RCON commands to be executed
 
 Usage:
 
