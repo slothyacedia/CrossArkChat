@@ -984,11 +984,26 @@ let slashCommands = new Map()
 let loadedPlugins = new Map()
 
 async function loadPlugins(forced = false) {
+  let priorityPlugins = ["CrossArkChat"]
+
   const pluginsPath = path.join(runtimeDir, "plugins")
   if (!fs.existsSync(pluginsPath)) return
 
   const folders = fs.readdirSync(pluginsPath).filter((f) => {
     return fs.statSync(path.join(pluginsPath, f)).isDirectory()
+  })
+
+  folders.sort((a, b) => {
+    const ai = priorityPlugins.indexOf(a)
+    const bi = priorityPlugins.indexOf(b)
+
+    if (ai !== -1 || bi !== -1) {
+      if (ai === -1) return 1
+      if (bi === -1) return -1
+      return ai - bi
+    }
+
+    return 0
   })
 
   for (const folder of folders) {

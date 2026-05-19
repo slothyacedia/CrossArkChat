@@ -138,14 +138,14 @@ module.exports = {
       }
     }
 
-    let refreshLoop = async () => {
-      refresh()
-      poller = setTimeout(refreshLoop, getDelay())
-    }
+    // let refreshLoop = async () => {
+    //   refresh()
+    //   poller = setTimeout(refreshLoop, getDelay())
+    // }
 
     await refresh()
 
-    poller = setTimeout(refreshLoop, getDelay())
+    // poller = setTimeout(refreshLoop, getDelay())
 
     onPacket = async function (packet) {
       if (!["join", "leave"].includes(packet.type)) return

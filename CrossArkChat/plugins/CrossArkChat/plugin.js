@@ -1,7 +1,7 @@
 const path = require("node:path")
 let pluginCommands = {
-  getplayerinfo: ["getplayerinfo", "gpi"],
-  reload: ["reload", "reloadconfig", "reloadplugins", "reloadcommands"],
+  getplayerinfo: ["getPlayerInfo", "gpi"],
+  reload: ["reload", "reloadConfig", "reloadPlugins", "reloadCommands"],
   restart: ["restart"],
 }
 
@@ -17,7 +17,7 @@ module.exports = {
   },
 
   async setup(cacApi) {
-    const { SlashCommandBuilder } = cacApi.utils.modules.djs
+    const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = cacApi.utils.modules.djs
     let textCmd = cacApi.discord.commands.text
     let slashCmd = cacApi.discord.commands.slash
 
