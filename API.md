@@ -77,6 +77,7 @@ It provides access to:
       slash: {
         register(),
         unregister(),
+        getCommands(),
         implement(),
       },
     },
