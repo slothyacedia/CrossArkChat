@@ -12,7 +12,7 @@ const { GameDig } = gamedig
 const { Client, GatewayIntentBits, REST, Routes, EmbedBuilder } = djs
 const EventEmitter = events.EventEmitter
 
-const CACJSversion = "v1.2.4-rc (API Modules)"
+const CACJSversion = "v1.2.6-rc (API Update)"
 const processId = process.pid.toString()
 const emitter = new EventEmitter()
 process.title = "CrossArkChat.js"
@@ -861,7 +861,7 @@ function createArkAgent(server) {
         text,
         source,
         metadata: {
-          steamId: associatedPlayer.steamId,
+          steamId: associatedPlayer?.steamId || null,
         },
       })
       return
@@ -1304,6 +1304,7 @@ let cacApi = {
   events: {
     on: (event, handler) => emitter.on(event, handler),
     off: (event, handler) => emitter.off(event, handler),
+    emit: (event, data) => emitter.emit(event, data),
   },
 
   ark: {

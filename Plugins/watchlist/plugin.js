@@ -6,7 +6,7 @@ let pluginCommands = ["watchlist", "wl"]
 
 module.exports = {
   name: "Watchlist",
-  version: "v2.0.4",
+  version: "v2.0.5",
 
   async teardown(cacApi) {
     let textCmd = cacApi.discord.commands.text
@@ -59,35 +59,78 @@ module.exports = {
       return false
     }
 
-    onPacket = function (packet) {
+    async function sleep(ms) {
+      await new Promise((resolve, reject) => {
+        setTimeout(() => {
+          resolve()
+        }, ms)
+      })
+    }
+
+    cacApi.events.on("playerInfoUpdate", async (data) => {
+      let config = cacApi.config.get()
+      let cache = cacApi.cache.get()
+      const enabledServers = config.servers.filter((server) => server.enabled)
+
+      const serverPlayers = enabledServers.flatMap((server) => {
+        return (cache[server.name]?.players || []).map((player) => ({ ...player, serverName: server.name }))
+      })
+
+      for (let player of serverPlayers) {
+        const steamId = player.steamId
+        if (!steamId) continue
+
+        const ign = player.data?.ign || player.ign
+        if (!ign) continue
+
+        const isNameWatched = pluginConfig.watchlist.names.includes(ign.toLowerCase())
+        const isSteamIdWatched = pluginConfig.watchlist.steamIds.includes(steamId)
+
+        if (isNameWatched || isSteamIdWatched) {
+          if (isNameWatched && !pluginConfig.watchlist.steamIds.includes(steamId)) {
+            pluginConfig.watchlist.steamIds.push(steamId)
+            savePluginConfig(pluginConfig)
+            cacApi.discord.send(pluginConfig.channel, `🔎 Auto-added steamid **${steamId}** for watched name **${ign}**`)
+          }
+
+          if (data.source === "packet") {
+            let packet = data.packet
+            if (packet.type === "join") {
+              cacApi.discord.send(pluginConfig.channel, `⚠️ **${packet.player}** (${packet.metadata?.steamId}) joined **${packet.server}**`)
+            }
+
+            if (packet.type === "chat") {
+              cacApi.discord.send(pluginConfig.channel, `⚠️ **${packet.player}** (${packet.server}): ${packet.text}`)
+            }
+
+            if (packet.type === "leave") {
+              cacApi.discord.send(pluginConfig.channel, `⚠️ **${packet.player}** (${packet.metadata?.steamId}) left **${packet.server}**`)
+            }
+          }
+        }
+      }
+    })
+
+    onPacket = async function (packet) {
       if (!isWatched(packet)) return
 
-      if (packet.type === "join") {
-        const steamId = packet.metadata?.steamId
-        if (
-          steamId &&
-          !pluginConfig.watchlist.steamIds.includes(steamId) &&
-          pluginConfig.watchlist.names.map((name) => name.toLowerCase()).includes(packet.player.toLowerCase())
-        ) {
-          pluginConfig.watchlist.steamIds.push(steamId)
-          savePluginConfig(pluginConfig)
-          cacApi.discord.send(pluginConfig.channel, `🔎 Auto-added steamid **${steamId}** for watched name **${packet.player}**`)
-        }
+      const steamId = packet.metadata?.steamId
 
+      if (
+        steamId &&
+        !pluginConfig.watchlist.steamIds.includes(steamId) &&
+        pluginConfig.watchlist.names.map((name) => name.toLowerCase()).includes(packet.player.toLowerCase())
+      ) {
+        pluginConfig.watchlist.steamIds.push(steamId)
+        savePluginConfig(pluginConfig)
+        cacApi.discord.send(pluginConfig.channel, `🔎 Auto-added steamid **${steamId}** for watched name **${packet.player}**`)
+      }
+
+      if (packet.type === "join") {
         cacApi.discord.send(pluginConfig.channel, `⚠️ **${packet.player}** (${packet.metadata?.steamId}) joined **${packet.server}**`)
       }
 
       if (packet.type === "chat") {
-        const steamId = packet.metadata?.steamId
-        if (
-          steamId &&
-          !pluginConfig.watchlist.steamIds.includes(steamId) &&
-          pluginConfig.watchlist.names.map((name) => name.toLowerCase()).includes(packet.player.toLowerCase())
-        ) {
-          pluginConfig.watchlist.steamIds.push(steamId)
-          savePluginConfig(pluginConfig)
-          cacApi.discord.send(pluginConfig.channel, `🔎 Auto-added steamid **${steamId}** for watched name **${packet.player}**`)
-        }
         cacApi.discord.send(pluginConfig.channel, `⚠️ **${packet.player}** (${packet.server}): ${packet.text}`)
       }
 

@@ -37,6 +37,8 @@ module.exports = {
           }
         }
       })
+
+      cacApi.events.emit("playerInfoUpdate", { source: "updater" })
     }, 1000)
 
     onPacket = async function (packet) {
@@ -61,6 +63,8 @@ module.exports = {
           }
         }
       }
+
+      cacApi.events.emit("playerInfoUpdate", { source: "packet", packet })
     }
 
     cacApi.events.on("packet", onPacket)
