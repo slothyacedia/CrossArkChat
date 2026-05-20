@@ -12,7 +12,7 @@ const { GameDig } = gamedig
 const { Client, GatewayIntentBits, REST, Routes, EmbedBuilder } = djs
 const EventEmitter = events.EventEmitter
 
-const CACJSversion = "v1.2.6-rc (API Update)"
+const CACJSversion = "v1.2.7-rc (Event API Update)"
 const processId = process.pid.toString()
 const emitter = new EventEmitter()
 process.title = "CrossArkChat.js"
@@ -1223,7 +1223,7 @@ process.on("unhandledRejection", (err) => {
   console.log(`[CrossArkChat] Unhandled Rejection:`, err)
 })
 
-let modMan = {
+const modMan = {
   installModule(moduleName, version) {
     return new Promise((resolve, reject) => {
       try {
@@ -1248,7 +1248,7 @@ let modMan = {
   },
 }
 
-let cacApi = {
+const cacApi = {
   utils: {
     isAdmin: async (userId) => {
       if (!client) return false
@@ -1302,9 +1302,23 @@ let cacApi = {
   },
 
   events: {
-    on: (event, handler) => emitter.on(event, handler),
-    off: (event, handler) => emitter.off(event, handler),
-    emit: (event, data) => emitter.emit(event, data),
+    on: emitter.on.bind(emitter),
+    off: emitter.off.bind(emitter),
+    once: emitter.once.bind(emitter),
+    addListener: emitter.addListener.bind(emitter),
+    removeListener: emitter.removeListener.bind(emitter),
+    prependListener: emitter.prependListener.bind(emitter),
+    prependOnceListener: emitter.prependOnceListener.bind(emitter),
+
+    emit: emitter.emit.bind(emitter),
+    removeAllListeners: emitter.removeAllListeners.bind(emitter),
+    setMaxListeners: emitter.setMaxListeners.bind(emitter),
+    getMaxListeners: emitter.getMaxListeners.bind(emitter),
+
+    listenerCount: emitter.listenerCount.bind(emitter),
+    listeners: emitter.listeners.bind(emitter),
+    rawListeners: emitter.rawListeners.bind(emitter),
+    eventNames: emitter.eventNames.bind(emitter),
   },
 
   ark: {
