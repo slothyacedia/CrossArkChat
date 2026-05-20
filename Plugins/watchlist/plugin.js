@@ -6,7 +6,7 @@ let pluginCommands = ["watchlist", "wl"]
 
 module.exports = {
   name: "Watchlist",
-  version: "v2.0.6",
+  version: "v2.0.7",
 
   async teardown(cacApi) {
     let textCmd = cacApi.discord.commands.text
@@ -84,33 +84,11 @@ module.exports = {
         if (!ign) continue
 
         const isNameWatched = pluginConfig.watchlist.names.includes(ign.toLowerCase())
-        const isSteamIdWatched = pluginConfig.watchlist.steamIds.includes(steamId)
 
-        if (isNameWatched || isSteamIdWatched) {
-          if (isNameWatched && !pluginConfig.watchlist.steamIds.includes(steamId)) {
-            pluginConfig.watchlist.steamIds.push(steamId)
-            savePluginConfig(pluginConfig)
-            cacApi.discord.send(pluginConfig.channel, `🔎 Auto-added steamid **${steamId}** for watched name **${ign}**`)
-          }
-
-          if (data.source === "packet" && data.packet) {
-            let packet = data.packet
-            const packetSteamId = packet.metadata?.steamId
-
-            if (packetSteamId === steamId) {
-              if (packet.type === "join") {
-                cacApi.discord.send(pluginConfig.channel, `⚠️ **${packet.player}** (${packet.metadata?.steamId}) joined **${packet.server}**`)
-              }
-
-              if (packet.type === "chat") {
-                cacApi.discord.send(pluginConfig.channel, `⚠️ **${packet.player}** (${packet.server}): ${packet.text}`)
-              }
-
-              if (packet.type === "leave") {
-                cacApi.discord.send(pluginConfig.channel, `⚠️ **${packet.player}** (${packet.metadata?.steamId}) left **${packet.server}**`)
-              }
-            }
-          }
+        if (isNameWatched && !pluginConfig.watchlist.steamIds.includes(steamId)) {
+          pluginConfig.watchlist.steamIds.push(steamId)
+          savePluginConfig(pluginConfig)
+          cacApi.discord.send(pluginConfig.channel, `🔎 Auto-added steamid **${steamId}** for watched name **${ign}**`)
         }
       }
     })
