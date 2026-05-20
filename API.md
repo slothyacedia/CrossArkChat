@@ -45,9 +45,11 @@ It provides access to:
     write(),
   },
 
-  events: {
-    on: (event, handler) => emitter.on(event, handler),
-    off: (event, handler) => emitter.off(event, handler),
+  events: { // Main Ones Listed Here
+    on(),
+    off(),
+    emit(),
+    once(),
   },
 
   ark: {
@@ -86,7 +88,7 @@ It provides access to:
   plugins: {
     load(),
     loadAll(),
-    loaded: () => loadedPlugins,
+    loaded(),
     reload(),
   },
 }
@@ -103,7 +105,7 @@ Returns if a user id from Discord is a admin
 Usage:
 
 ```js
-let isAdmin = await cacApi.utils.isAdmin(message.author.id /* the user id of the person who used the command*/)
+let isAdmin = await cacApi.utils.isAdmin(message.author.id /* the user id of the person who used the command */)
 if (isAdmin) {
   console.log("User Is Admin")
 } else {
@@ -154,7 +156,7 @@ Returns: `require()`
 
 ### `modules`
 
-Allows access of baseline modules such as `fs`, `path`, `rcon-client`, `discord.js`, etc.
+Allows access of CrossArkChat installed modules such as `fs`, `path`, `rcon-client`, `discord.js`, etc.
 
 Usage:
 
@@ -252,6 +254,8 @@ Returns: `null`
 
 ## Events
 
+The events API is a binding to `node:events`'s EventEmitter
+
 ### `on(<event>, <handler>)`
 
 Allows you to hook into CrossArkChat's emitted events to act on them
@@ -277,6 +281,23 @@ Usage:
 ```js
 cacApi.events.off("packet" (packet)=>{
   console.log(JSON.stringify(packet, null, 2))
+})
+```
+
+Returns: `null`
+
+---
+
+### `emit(<event>, <data>)`
+
+Allows you to emit a event that others can utilise
+
+Usage:
+
+```js
+cacApi.events.emit("packet", {
+  message: "hello world",
+  foo: "bar",
 })
 ```
 
