@@ -6,7 +6,7 @@ let pluginCommands = ["watchlist", "wl"]
 
 module.exports = {
   name: "Watchlist",
-  version: "v2.0.5",
+  version: "v2.0.6",
 
   async teardown(cacApi) {
     let textCmd = cacApi.discord.commands.text
@@ -73,7 +73,7 @@ module.exports = {
       const enabledServers = config.servers.filter((server) => server.enabled)
 
       const serverPlayers = enabledServers.flatMap((server) => {
-        return (cache[server.name]?.players || []).map((player) => ({ ...player, serverName: server.name }))
+        return (cache[server.name]?.players || []).map((player) => ({ ...player, server }))
       })
 
       for (let player of serverPlayers) {
@@ -93,18 +93,22 @@ module.exports = {
             cacApi.discord.send(pluginConfig.channel, `🔎 Auto-added steamid **${steamId}** for watched name **${ign}**`)
           }
 
-          if (data.source === "packet") {
+          if (data.source === "packet" && data.packet) {
             let packet = data.packet
-            if (packet.type === "join") {
-              cacApi.discord.send(pluginConfig.channel, `⚠️ **${packet.player}** (${packet.metadata?.steamId}) joined **${packet.server}**`)
-            }
+            const packetSteamId = packet.metadata?.steamId
 
-            if (packet.type === "chat") {
-              cacApi.discord.send(pluginConfig.channel, `⚠️ **${packet.player}** (${packet.server}): ${packet.text}`)
-            }
+            if (packetSteamId === steamId) {
+              if (packet.type === "join") {
+                cacApi.discord.send(pluginConfig.channel, `⚠️ **${packet.player}** (${packet.metadata?.steamId}) joined **${packet.server}**`)
+              }
 
-            if (packet.type === "leave") {
-              cacApi.discord.send(pluginConfig.channel, `⚠️ **${packet.player}** (${packet.metadata?.steamId}) left **${packet.server}**`)
+              if (packet.type === "chat") {
+                cacApi.discord.send(pluginConfig.channel, `⚠️ **${packet.player}** (${packet.server}): ${packet.text}`)
+              }
+
+              if (packet.type === "leave") {
+                cacApi.discord.send(pluginConfig.channel, `⚠️ **${packet.player}** (${packet.metadata?.steamId}) left **${packet.server}**`)
+              }
             }
           }
         }
