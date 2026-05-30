@@ -10,9 +10,9 @@ const gamedig = require("gamedig")
 const { Rcon } = rconClient
 const { GameDig } = gamedig
 const { Client, GatewayIntentBits, REST, Routes, EmbedBuilder } = djs
-const EventEmitter = events.EventEmitter
+const { EventEmitter } = events
 
-const CACJSversion = "v1.2.7-rc (Event API Update)"
+const CACJSversion = "v1.3.0-rc (Database)"
 const processId = process.pid.toString()
 const emitter = new EventEmitter()
 process.title = "CrossArkChat.js"
@@ -463,7 +463,6 @@ function createArkAgent(server) {
   let pollPlayersFailCount = 0
   let heartbeatFailCount = 0
   let disconnectCount = 0
-  let retryDelay = 5000
   const gracePeriod = Number(config.ark.transferGracePeriod) || 30000
 
   let commandTimeout = Number(config.ark.commandTimeout) || 5000
@@ -548,7 +547,7 @@ function createArkAgent(server) {
     if (serverConnectable == false) {
       state = "DISCONNECTED"
       disconnectCount++
-      if (disconnectCount >= 5) {
+      if (disconnectCount >= 2) {
         let previousPlayers = cache[cacheKey].players
         for (const player of previousPlayers) {
           const timer = setTimeout(() => leaveCache.delete(player.steamId), gracePeriod)
@@ -587,7 +586,6 @@ function createArkAgent(server) {
       await rcon.connect()
 
       state = "CONNECTED"
-      retryDelay = 5000
       disconnectCount = 0
 
       if (config.logging.rconStatus) console.log(`[${server.name}] RCON Connected`)
@@ -944,7 +942,7 @@ function createArkAgent(server) {
       reconnectTimer = null
 
       connect()
-    }, retryDelay)
+    }, 5000)
   }
 
   function cleanup() {
@@ -984,7 +982,7 @@ let slashCommands = new Map()
 let loadedPlugins = new Map()
 
 async function loadPlugins(forced = false) {
-  let priorityPlugins = ["CrossArkChat"]
+  let priorityPlugins = config.plugins.loadOrder || ["CrossArkChat", "Database"]
 
   const pluginsPath = path.join(runtimeDir, "plugins")
   if (!fs.existsSync(pluginsPath)) return

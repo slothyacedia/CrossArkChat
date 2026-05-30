@@ -53,6 +53,15 @@ module.exports = {
       guild: "", // Guild id if scope is defined as guild
     },
   },
+  plugins: {
+    loadOrder: ["CrossArkChat", "Database"],
+    /*
+    Load priority for CrossArkChat.js plugins
+    
+    Always try to load CrossArkChat and Database first as they're plugins that provide
+    a foundation for other plugins to work
+    */
+  },
   formats: {
     /*
     Allows you to do formatting of the messages that get sent across the system

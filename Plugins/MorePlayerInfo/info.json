@@ -1,0 +1,7 @@
+{
+  "author": "Acedia",
+  "description": "Pulls extra user info using RCON via the ASE ArkApi's ExtendedRCON plugin",
+  "requirements": {
+    "AseApi": ["ExtendedRCON"]
+  }
+}

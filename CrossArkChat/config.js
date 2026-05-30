@@ -34,31 +34,24 @@ module.exports = {
     enabled: true,
     token: "",
     prefix: "cac.",
-    admins: [""],
+    admins: [],
     stripEmojis: true,
     channels: {
       chat: "",
-      join: "", // Defaults to the chat channel
-      leave: "", // Defaults to the chat channel
+      join: "",
+      leave: "",
       tribeLogs: "",
-      leftovers: "", // Defaults to the tribe logs channel
+      leftovers: "",
     },
     slashCommands: {
-      scope: "global", // "guild" or "global"
-      guild: "", // Guild id if scope is defined as guild
+      scope: "global",
+      guild: "",
     },
   },
+  plugins: {
+    loadOrder: ["CrossArkChat", "Database"],
+  },
   formats: {
-    /*
-    Available Placeholders:
-    Server Name / Id: {name}, {serverName}, {serverId}, {map}
-    Player Name: {player}, {user}
-    Tribe Name: {tribeName}
-    Tribe Id: {tribeId}
-    Join Link: {joinLink}, {invite}
-    Date Time: {dateTime}, {time}
-    Chat / Text: {text}, {message}
-    */
     toConsole: {
       join: "{player} joined {serverName} ({text})",
       leave: "{player} left {serverName} ({text})",
@@ -79,35 +72,110 @@ module.exports = {
   },
   replacements: {
     toConsole: [
-      { from: /😊/g, to: ":)" },
-      { from: /😉/g, to: ";)" },
-      { from: /😄/g, to: ":D" },
-      { from: /(☹️|🙁)/g, to: ":(" },
-      { from: /😈/g, to: ">:)" },
-      { from: /😐/g, to: ":|" },
-      { from: /😮/g, to: ":o" },
-      { from: /😛/g, to: ":p" },
+      {
+        from: /😊/g,
+        to: ":)",
+      },
+      {
+        from: /😉/g,
+        to: ";)",
+      },
+      {
+        from: /😄/g,
+        to: ":D",
+      },
+      {
+        from: /(☹️|🙁)/g,
+        to: ":(",
+      },
+      {
+        from: /😈/g,
+        to: ">:)",
+      },
+      {
+        from: /😐/g,
+        to: ":|",
+      },
+      {
+        from: /😮/g,
+        to: ":o",
+      },
+      {
+        from: /😛/g,
+        to: ":p",
+      },
     ],
     toDiscord: [
-      { from: /(?<=^|\s):\)(?=\s|$)/g, to: "😊" },
-      { from: /(?<=^|\s);\)(?=\s|$)/g, to: "😉" },
-      { from: /(?<=^|\s):D(?=\s|$)/gi, to: "😄" },
-      { from: /(?<=^|\s):\((?=\s|$)/g, to: "🙁" },
-      { from: /(?<=^|\s)>(?::\))(?=\s|$)/g, to: "😈" },
-      { from: /(?<=^|\s):\|(?=\s|$)/g, to: "😐" },
-      { from: /(?<=^|\s):o(?=\s|$)/gi, to: "😮" },
-      { from: /(?<=^|\s):P(?=\s|$)/gi, to: "😛" },
-      { from: /(?<=^|\s)T(\.|-)T(?=\s|$)/g, to: "😭" },
+      {
+        from: /(?<=^|\s):\)(?=\s|$)/g,
+        to: "😊",
+      },
+      {
+        from: /(?<=^|\s);\)(?=\s|$)/g,
+        to: "😉",
+      },
+      {
+        from: /(?<=^|\s):D(?=\s|$)/gi,
+        to: "😄",
+      },
+      {
+        from: /(?<=^|\s):\((?=\s|$)/g,
+        to: "🙁",
+      },
+      {
+        from: /(?<=^|\s)>(?::\))(?=\s|$)/g,
+        to: "😈",
+      },
+      {
+        from: /(?<=^|\s):\|(?=\s|$)/g,
+        to: "😐",
+      },
+      {
+        from: /(?<=^|\s):o(?=\s|$)/gi,
+        to: "😮",
+      },
+      {
+        from: /(?<=^|\s):P(?=\s|$)/gi,
+        to: "😛",
+      },
+      {
+        from: /(?<=^|\s)T(\.|-)T(?=\s|$)/g,
+        to: "😭",
+      },
     ],
     toServers: [
-      { from: /😊/g, to: ":)" },
-      { from: /😉/g, to: ";)" },
-      { from: /😄/g, to: ":D" },
-      { from: /(☹️|🙁)/g, to: ":(" },
-      { from: /😈/g, to: ">:)" },
-      { from: /😐/g, to: ":|" },
-      { from: /😮/g, to: ":o" },
-      { from: /😛/g, to: ":p" },
+      {
+        from: /😊/g,
+        to: ":)",
+      },
+      {
+        from: /😉/g,
+        to: ";)",
+      },
+      {
+        from: /😄/g,
+        to: ":D",
+      },
+      {
+        from: /(☹️|🙁)/g,
+        to: ":(",
+      },
+      {
+        from: /😈/g,
+        to: ">:)",
+      },
+      {
+        from: /😐/g,
+        to: ":|",
+      },
+      {
+        from: /😮/g,
+        to: ":o",
+      },
+      {
+        from: /😛/g,
+        to: ":p",
+      },
     ],
   },
   broadcast: {
@@ -132,9 +200,9 @@ module.exports = {
     },
   },
   logging: {
-    rconStatus: true,
+    rconStatus: false,
     discordStatus: true,
     startup: true,
-    plugins: true,
+    plugins: false,
   },
 }

@@ -1,6 +1,7 @@
 const path = require("node:path")
 const fs = require("node:fs")
 
+const newLocal = ""
 // --- CENTRALIZED MESSAGES CONFIGURATION ---
 const messageTemplates = {
   noPermission: "You don't have permission to use this command.",
@@ -39,6 +40,9 @@ const messageTemplates = {
   playerLeft: "⚠️ **{player}** ({steamId}) left **{server}**",
   playerChat: "⚠️ **{player}** ({server}): {text}",
 
+  tribeLogs: "⚠️ [{server}] {tribeName} (ID: {tribeId})",
+  leftovers: "⚠️ [{server}] Leftover Logs {tribeName} (ID: {tribeId})",
+
   // Main Help Menu Format
   helpMenu: [
     "**Watchlist Commands:**\n",
@@ -68,7 +72,7 @@ let lastFlushTime = 0
 
 module.exports = {
   name: "Watchlist",
-  version: "v2.1.0",
+  version: "v2.1.1",
 
   async teardown(cacApi) {
     let textCmd = cacApi.discord.commands.text
@@ -164,16 +168,28 @@ module.exports = {
         const currentBatch = batchQueue.splice(0)
 
         const embeds = currentBatch.map((packet) => {
-          const meta = packet.metadata || {}
+          const metadata = packet.metadata || {}
           const embed = new EmbedBuilder()
 
           switch (packet.type) {
             case "tribeLogs": {
-              embed.setTitle(`⚠️ Watchlist [${packet.origin || packet.server}] ${meta.tribeName ?? "Unknown Tribe"} (ID: ${meta.tribeId ?? "?"})`)
+              embed.setTitle(
+                templateReplace(messageTemplates.tribeLogs, {
+                  server: packet.server,
+                  tribeName: metadata.tribeName || "Unknown Tribe",
+                  tribeId: metadata.tribeId || "?",
+                }),
+              )
               break
             }
             case "leftovers": {
-              embed.setTitle(`⚠️ Watchlist [${packet.origin || packet.server}] Leftover Logs`)
+              embed.setTitle(
+                templateReplace(messageTemplates.leftovers, {
+                  server: packet.server,
+                  tribeName: metadata.tribeName || "Unknown Tribe",
+                  tribeId: metadata.tribeId || "?",
+                }),
+              )
               break
             }
             default: {
@@ -185,7 +201,7 @@ module.exports = {
           embed
             .setDescription(packet.text || "")
             .setTimestamp()
-            .setColor(meta.color ?? "#2f3136")
+            .setColor(metadata.color ?? "#2f3136")
 
           return { embed, packet }
         })
@@ -213,7 +229,7 @@ module.exports = {
       const enabledServers = config.servers.filter((server) => server.enabled)
 
       const serverPlayers = enabledServers.flatMap((server) => {
-        return (cache[server.name]?.players || []).map((player) => ({ ...player, server }))
+        return (cache[server.name]?.players || []).map((player) => ({ ...player, server: { name: server.name } }))
       })
 
       for (let player of serverPlayers) {
@@ -348,7 +364,7 @@ module.exports = {
         savePluginConfig(pluginConfig)
         cacApi.discord.send(
           pluginConfig.channel,
-          templateReplace(messageTemplates.logAdded, { values: added.join(", "), type: "Steam ID", username: message.author.username }),
+          templateReplace(messageTemplates.logAdded, { values: added.join(", "), type: "Steam ID", username: `<@${message.author.id}>` }),
         )
         return message.reply(templateReplace(messageTemplates.replyAdded, { type: "Steam ID", values: added.join(", ") }))
       }

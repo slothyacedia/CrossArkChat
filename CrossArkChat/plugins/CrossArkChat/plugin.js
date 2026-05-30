@@ -3,6 +3,8 @@ let pluginCommands = {
   getplayerinfo: ["getPlayerInfo", "gpi"],
   reload: ["reload", "reloadConfig", "reloadPlugins", "reloadCommands"],
   restart: ["restart"],
+  rcon: ["rcon", "sendRcon"],
+  rconAll: ["rconAll", "sendRconAll"],
 }
 
 let commandsList = Object.values(pluginCommands).flat()
@@ -193,6 +195,14 @@ module.exports = {
         return message.reply(`Restart Failed, ${err.message}`)
       }
     })
+
+    // textCmd.register(pluginCommands.rcon, async (message, cmd, args) => {
+    //   try {
+    //     if (!(await cacApi.utils.isAdmin(message.author.id))) throw new Error("Not An Admin")
+    //   } catch (err) {
+    //     return message.reply(`Rcon Failed, ${err.message}`)
+    //   }
+    // })
 
     slashCmd.register(
       pluginCommands.getplayerinfo[0],

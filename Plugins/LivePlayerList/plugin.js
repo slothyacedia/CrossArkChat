@@ -6,7 +6,7 @@ let poller = null
 
 module.exports = {
   name: "Live Player List",
-  version: "v1.0.3",
+  version: "v1.0.4",
 
   async teardown(cacApi) {
     if (onPacket) cacApi.events.off("packet", onPacket)
@@ -22,23 +22,39 @@ module.exports = {
 
     const pluginDir = __dirname
     const configPath = path.join(pluginDir, "config.json")
+    const panelPath = path.join(pluginDir, "panel.json")
 
     if (!fs.existsSync(configPath)) {
-      fs.writeFileSync(
-        configPath,
-        JSON.stringify(
-          {
-            channel: "",
-          },
-          null,
-          2,
-        ),
-      )
+      fs.writeFileSync(configPath, JSON.stringify({ channel: "" }, null, 2))
     }
 
     function loadPluginConfig() {
       delete require.cache[require.resolve(configPath)]
       return JSON.parse(fs.readFileSync(configPath, "utf8"))
+    }
+
+    function loadPanelCache() {
+      if (!fs.existsSync(panelPath)) return null
+      try {
+        return JSON.parse(fs.readFileSync(panelPath, "utf8"))
+      } catch (err) {
+        return null
+      }
+    }
+
+    function savePanelCache(channelId, messageId) {
+      fs.writeFileSync(
+        panelPath,
+        JSON.stringify(
+          {
+            channelId,
+            messageId,
+            createdAt: Date.now(),
+          },
+          null,
+          2,
+        ),
+      )
     }
 
     const getDelay = () => {
@@ -61,7 +77,6 @@ module.exports = {
           if (player.data?.ign) {
             return `${player.data.ign} (${player.name}) [${player.data.tribeName}]: \`${player.steamId}\``
           }
-
           return `${player.name}: \`${player.steamId}\``
         })
       })
@@ -71,9 +86,7 @@ module.exports = {
 
     let createEmbeds = (players) => {
       let embeds = []
-
       let embed = new EmbedBuilder().setTitle("Live Player List").setTimestamp(new Date())
-
       let fieldCount = 0
 
       for (let server in players) {
@@ -85,9 +98,7 @@ module.exports = {
 
         if (fieldCount >= 25) {
           embeds.push(embed)
-
           embed = new EmbedBuilder().setTitle("Live Player List (Continued)").setTimestamp(new Date())
-
           fieldCount = 0
         }
 
@@ -100,7 +111,6 @@ module.exports = {
       }
 
       embeds.push(embed)
-
       return embeds
     }
 
@@ -112,7 +122,6 @@ module.exports = {
     }
 
     const client = cacApi.discord.getClient()
-
     let channel = client.channels.cache.get(pluginConfig.channel) || (await client.channels.fetch(pluginConfig.channel))
 
     if (!channel) {
@@ -120,12 +129,29 @@ module.exports = {
       return
     }
 
-    let messages = await channel.messages.fetch({ limit: 100 })
-    await channel.bulkDelete(messages, true)
+    let message = null
+    let cacheData = loadPanelCache()
 
-    let message = await channel.send({
-      embeds: [new EmbedBuilder().setTitle("Live Player List").setDescription("Loading...")],
-    })
+    if (cacheData && cacheData.channelId === channel.id && cacheData.messageId) {
+      const isExpired = Date.now() - cacheData.createdAt >= 24 * 60 * 60 * 1000
+
+      if (!isExpired) {
+        try {
+          message = await channel.messages.fetch(cacheData.messageId)
+        } catch (err) {}
+      }
+    }
+
+    if (!message) {
+      let messages = await channel.messages.fetch({ limit: 100 })
+      await channel.bulkDelete(messages, true)
+
+      message = await channel.send({
+        embeds: [new EmbedBuilder().setTitle("Live Player List").setDescription("Loading...")],
+      })
+
+      savePanelCache(channel.id, message.id)
+    }
 
     let refresh = async () => {
       try {
@@ -138,14 +164,7 @@ module.exports = {
       }
     }
 
-    // let refreshLoop = async () => {
-    //   refresh()
-    //   poller = setTimeout(refreshLoop, getDelay())
-    // }
-
     await refresh()
-
-    // poller = setTimeout(refreshLoop, getDelay())
 
     onPacket = async function (packet) {
       if (!["join", "leave"].includes(packet.type)) return
