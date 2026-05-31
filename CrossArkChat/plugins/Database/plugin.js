@@ -1,6 +1,6 @@
 module.exports = {
-  name: "Database Engine",
-  version: "v1.0.0",
+  name: "Database",
+  version: "v1.0.1",
 
   async teardown(cacApi) {
     if (cacApi.database) {
@@ -16,7 +16,16 @@ module.exports = {
     const Database = await cacApi.utils.modMan.require("better-sqlite3")
     const db = new Database(path.join(__dirname, "database.sqlite"))
 
-    const initializedTables = new Set()
+    const existingTables = db
+      .prepare(
+        `
+      SELECT name FROM sqlite_master 
+      WHERE type='table' AND name NOT LIKE 'sqlite_%'
+    `,
+      )
+      .all()
+
+    const initializedTables = new Set(existingTables.map((table) => table.name))
 
     const provisionTable = (tableName) => {
       const cleanName = tableName.replace(/[^a-zA-Z0-9_]/g, "")
@@ -39,6 +48,9 @@ module.exports = {
         return {
           createColumn(name, type = "string") {
             const cleanCol = name.replace(/[^a-zA-Z0-9_]/g, "")
+            const typeString = type.toLowerCase()
+
+            let isUnique = typeString.includes("unique")
 
             const typeMap = {
               string: "TEXT",
@@ -52,18 +64,18 @@ module.exports = {
               bool: "INTEGER",
             }
 
-            let targetType = typeMap[type.toLowerCase()]
-
-            if (!targetType) {
-              console.log(`[Database:${cleanTable}] Unknown type "${type}" passed for column "${name}". Defaulting to "string" (TEXT).`)
-              targetType = "TEXT"
-            }
+            const baseTypeKeyword = typeString.replace("unique", "").trim()
+            let targetType = typeMap[baseTypeKeyword] || "TEXT"
 
             try {
               db.prepare(`ALTER TABLE ${cleanTable} ADD COLUMN ${cleanCol} ${targetType}`).run()
+
+              if (isUnique) {
+                db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_${cleanTable}_${cleanCol} ON ${cleanTable} (${cleanCol})`).run()
+              }
             } catch (err) {
               if (!err.message.includes("duplicate column name")) {
-                console.log(`[Database:${cleanTable}] Error adding column ${cleanCol}:`, err.message)
+                console.log(`[dbTools:${cleanTable}] Error adding column ${cleanCol}:`, err.message)
               }
             }
             return this
@@ -84,33 +96,64 @@ module.exports = {
           insert(object) {
             const keys = Object.keys(object).map((k) => k.replace(/[^a-zA-Z0-9_]/g, ""))
             const placeholders = keys.map(() => "?").join(", ")
-            const values = Object.values(object)
+
+            const values = Object.values(object).map((val) => {
+              if (typeof val === "boolean") return val ? 1 : 0
+              return val
+            })
+
             db.prepare(`INSERT INTO ${cleanTable} (${keys.join(", ")}) VALUES (${placeholders})`).run(...values)
             return this
           },
 
-          findOne(key, value) {
-            const cleanCol = key.replace(/[^a-zA-Z0-9_]/g, "")
+          findOne(column, value) {
+            const cleanCol = column.replace(/[^a-zA-Z0-9_]/g, "")
             return db.prepare(`SELECT * FROM ${cleanTable} WHERE ${cleanCol} = ?`).get(value)
           },
 
-          find(key, value) {
-            const cleanCol = key.replace(/[^a-zA-Z0-9_]/g, "")
+          find(column, value) {
+            const cleanCol = column.replace(/[^a-zA-Z0-9_]/g, "")
             return db.prepare(`SELECT * FROM ${cleanTable} WHERE ${cleanCol} = ?`).all(value)
           },
 
-          update(column, value, newValue) {
+          update(column, value, object) {
             const cleanWhere = column.replace(/[^a-zA-Z0-9_]/g, "")
-            const keys = Object.keys(newValue)
+            const keys = Object.keys(object)
               .map((k) => `${k.replace(/[^a-zA-Z0-9_]/g, "")} = ?`)
               .join(", ")
-            const values = [...Object.values(newValue), value]
+
+            const values = [
+              ...Object.values(object).map((val) => {
+                if (typeof val === "boolean") return val ? 1 : 0
+                return val
+              }),
+              value,
+            ]
+
             db.prepare(`UPDATE ${cleanTable} SET ${keys} WHERE ${cleanWhere} = ?`).run(...values)
+            return this
+          },
+
+          upsert(column, value, object) {
+            const cleanWhere = column.replace(/[^a-zA-Z0-9_]/g, "")
+            const recordExists = this.findOne(cleanWhere, value)
+
+            if (recordExists) {
+              this.update(cleanWhere, value, object)
+            } else {
+              const fullPayload = {
+                ...object,
+                [cleanWhere]: value,
+              }
+              this.insert(fullPayload)
+            }
             return this
           },
         }
       },
     }
+
+    databaseAPI.tools.table = databaseAPI.tools.createTable
 
     databaseAPI._rawConnection = db
     cacApi.database = databaseAPI

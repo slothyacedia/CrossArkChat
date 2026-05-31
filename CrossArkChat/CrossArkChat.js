@@ -12,7 +12,7 @@ const { GameDig } = gamedig
 const { Client, GatewayIntentBits, REST, Routes, EmbedBuilder } = djs
 const { EventEmitter } = events
 
-const CACJSversion = "v1.3.0-rc (Database)"
+const CACJSversion = "v1.3.1-rc (Redundant API Removal)"
 const processId = process.pid.toString()
 const emitter = new EventEmitter()
 process.title = "CrossArkChat.js"
@@ -1293,10 +1293,6 @@ const cacApi = {
 
   cache: {
     get: () => cache,
-    write: (newCache) => {
-      Object.keys(cache).forEach((key) => delete cache[key])
-      Object.assign(cache, newCache)
-    },
   },
 
   events: {
@@ -1404,6 +1400,8 @@ const cacApi = {
       await loadPlugin(filePath, forced)
     },
   },
+
+  apis: {},
 }
 
 start()

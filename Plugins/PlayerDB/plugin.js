@@ -2,13 +2,13 @@ let onPacket = null
 
 module.exports = {
   name: "Player Database",
-  version: "v1.0.0",
+  version: "v1.0.2",
 
   async teardown(cacApi) {
     cacApi.events.off("packet", onPacket)
     onPacket = null
     if (cacApi.database && cacApi.database.playerDB) {
-      delete cacApi.database.playerDB
+      delete cacApi.apis.playerDB
     }
   },
 
@@ -16,25 +16,18 @@ module.exports = {
     const path = cacApi.utils.modules.path
     const fs = cacApi.utils.modules.fs
 
-    const db = cacApi.database("players")
+    const playerTable = cacApi.database.tools.table("players").createColumn("steamId", "string unique").createColumn("profile", "string")
 
     const getProfile = (steamId) => {
-      const row = db.prepare("SELECT profile FROM players WHERE steamId = ?").get(steamId)
+      const row = playerTable.findOne("steamId", steamId)
       return row ? JSON.parse(row.profile) : null
     }
 
     const saveProfile = (steamId, profileObj) => {
-      db.prepare(
-        `
-        INSERT INTO players (steamId, profile) 
-        VALUES (?, ?) 
-        ON CONFLICT(steamId) DO UPDATE SET profile = excluded.profile
-      `,
-      ).run(steamId, JSON.stringify(profileObj, null, 2))
+      playerTable.upsert("steamId", steamId, { profile: JSON.stringify(profileObj, null, 2) })
     }
 
-    cacApi.database.playerDB = {
-      db,
+    cacApi.apis.playerDB = {
       getProfile,
       saveProfile,
     }
@@ -139,8 +132,8 @@ module.exports = {
 
     cacApi.events.on("playerDB.update", async () => {
       try {
-        const rows = db.prepare("SELECT profile FROM players").all()
-        const allData = rows.map((r) => JSON.parse(r.profile))
+        const allRows = cacApi.database("players").prepare("SELECT profile FROM players").all()
+        const allData = allRows.map((row) => JSON.parse(row.profile))
 
         let newJson = JSON.stringify(allData, null, 2)
 

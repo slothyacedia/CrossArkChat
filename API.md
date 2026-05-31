@@ -235,23 +235,6 @@ Returns: `Object`
 
 ---
 
-### `write()`
-
-Writes to the current cache but most likely isn't needed due to `get()` returning a live mutable object
-
-> [!WARNING]
-> This can totally destroy your cache and crash CrossArkChat
-
-Usage:
-
-```js
-cacApi.cache.write(cache)
-```
-
-Returns: `null`
-
----
-
 ## Events
 
 The events API is a binding to `node:events`'s EventEmitter
