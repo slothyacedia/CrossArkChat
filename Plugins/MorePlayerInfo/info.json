@@ -2,28 +2,6 @@
   "author": "Acedia",
   "description": "Pulls extra user info using RCON via the ASE ArkApi's ExtendedRCON plugin",
   "requirements": {
-    "AseApi": ["PlayerInfo"],
-    "PlayerInfo": {
-      "rconCommands": {
-        "getPlayerInfos": {
-          "arguments": ["{steamId}"],
-          "scope": "player",
-          "format": "{\"charName\": \"{charName}\", \"steamId\": \"{steamId}\", \"tribeName\": \"{tribeName}\", \"tribeId\": \"{tribeId}\", \"playerId\": \"{playerId}\"}",
-          "formatType": "json",
-          "delimiter": ", ",
-          "reply": "{format}\n\n",
-          "defaultResponse": "Player not found or not in a tribe."
-        },
-        "getAllPlayerInfos": {
-          "arguments": [],
-          "scope": "map",
-          "format": "{\"charName\": \"{charName}\", \"steamId\": \"{steamId}\", \"tribeName\": \"{tribeName}\", \"tribeId\": \"{tribeId}\", \"playerId\": \"{playerId}\"}",
-          "formatType": "json",
-          "delimiter": ", ",
-          "reply": "[{format}]\n\n",
-          "defaultResponse": "No Players Online"
-        }
-      }
-    }
+    "AseApi": ["ExtendedRCON (V3.5)"]
   }
 }

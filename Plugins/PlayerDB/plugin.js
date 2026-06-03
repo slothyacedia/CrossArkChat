@@ -82,7 +82,6 @@ module.exports = {
         }
         profile.tribes[player.server.name] = {
           name: player.data?.tribeName || "",
-          id: player.data?.tribeId || "",
         }
         profile.data = player.data
 
