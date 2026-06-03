@@ -6,7 +6,7 @@ let poller = null
 
 module.exports = {
   name: "More Player Info",
-  version: "v1.0.1",
+  version: "v2.0.0",
 
   async teardown(cacApi) {
     if (onPacket) cacApi.events.off("packet", onPacket)
@@ -21,21 +21,30 @@ module.exports = {
     poller = setInterval(async () => {
       arkAgents.forEach(async (agent) => {
         const cacheKey = agent.name
-        let response = await agent.sendCommand("ListAllPlayerSteamId")
+        let response = await agent.sendCommand("playerInfo.getAllPlayerInfos")
         if (!response) return
-        if (response.trim() == "No Players Online") return
+        if (response.trim() == "[No Players Online]") return
 
-        let lines = response.trim().split("\n")
-        for (let line of lines) {
-          let playerInfo = line.match(/^(.+)\s\[(.*)\]:\s(\d+)$/)
-          if (playerInfo) {
-            let [, inGameName, tribeName, steamId] = playerInfo
-            let playerMatch = cache[cacheKey].players.find((player) => player.steamId == steamId)
-            if (!playerMatch) continue
-            playerMatch.data.tribeName = tribeName
-            playerMatch.data.ign = inGameName
-          }
+        let players
+
+        try {
+          response = response.trim()
+          players = JSON.parse(response)
+        } catch (err) {
+          console.log(`[${this.name}] Failed To Parse Player Info Response: ${err.message}`)
         }
+
+        if (!players) return
+
+        players.forEach((player) => {
+          let playerMatch = cache[cacheKey].players.find((cachedPlayer) => cachedPlayer.steamId == player.steamId)
+          if (playerMatch) {
+            playerMatch.data.tribeName = player.tribeName == "?" && player.tribeId == "?" ? "" : player.tribeName
+            playerMatch.data.tribeId = player.tribeName == "?" && player.tribeId == "?" ? "" : player.tribeId
+            playerMatch.data.ign = player.charName
+            playerMatch.data.playerId = player.playerId
+          }
+        })
       })
 
       cacApi.events.emit("playerInfoUpdate", { source: "updater" })
@@ -47,21 +56,30 @@ module.exports = {
       if (["join", "leave"].includes(packet.type)) {
         let agent = arkAgents.find((agent) => agent.name == packet.server)
         const cacheKey = agent.name
-        let response = await agent.sendCommand("ListAllPlayerSteamId")
+        let response = await agent.sendCommand("playerInfo.getAllPlayerInfos")
         if (!response) return
-        if (response.trim() == "No Players Online") return
+        if (response.trim() == "[No Players Online]") return
 
-        let lines = response.trim().split("\n")
-        for (let line of lines) {
-          let playerInfo = line.match(/^(.+)\s\[(.*)\]:\s(\d+)$/)
-          if (playerInfo) {
-            let [, inGameName, tribeName, steamId] = playerInfo
-            let playerMatch = cache[cacheKey].players.find((player) => player.steamId == steamId)
-            if (!playerMatch) continue
-            playerMatch.tribeName = tribeName
-            playerMatch.ign = inGameName
-          }
+        let players
+
+        try {
+          response = response.trim()
+          players = JSON.parse(response)
+        } catch (err) {
+          console.log(`[${this.name}] Failed To Parse Player Info Response: ${err.message}`)
         }
+
+        if (!players) return
+
+        players.forEach((player) => {
+          let playerMatch = cache[cacheKey].players.find((cachedPlayer) => cachedPlayer.steamId == player.steamId)
+          if (playerMatch) {
+            playerMatch.data.tribeName = player.tribeName == "?" && player.tribeId == "?" ? "" : player.tribeName
+            playerMatch.data.tribeId = player.tribeName == "?" && player.tribeId == "?" ? "" : player.tribeId
+            playerMatch.data.ign = player.charName
+            playerMatch.data.playerId = player.playerId
+          }
+        })
       }
 
       cacApi.events.emit("playerInfoUpdate", { source: "packet", packet })
