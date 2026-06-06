@@ -5,6 +5,9 @@
 
 This directory contains AseApi plugin dependencies that CrossArkChat.js uses for plugins.<br>
 
+## Usages
+PlayerInfo - MorePlayerInfo
+
 ## Credits
 
 ExtendedRCON - Foppa
