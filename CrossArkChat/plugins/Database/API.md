@@ -157,6 +157,16 @@ const flagged = cacApi.database.tools.table("players").find("flagged", 1)
 
 ---
 
+#### `allRows()`
+
+Returns all rows of the table
+
+```js
+const allRows = cacApi.database.tools.table("players").allRows()
+```
+
+---
+
 #### `update(<column>, <value>, <object>)`
 
 Finds all rows where `<column>` equals `<value>` and applies the key/value pairs in `<object>` as column updates. Does nothing if no row matches.
