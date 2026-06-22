@@ -6,7 +6,7 @@ let poller = null
 
 module.exports = {
   name: "Live Player List",
-  version: "v1.0.4",
+  version: "v1.0.5",
 
   async teardown(cacApi) {
     if (onPacket) cacApi.events.off("packet", onPacket)
@@ -133,7 +133,9 @@ module.exports = {
     let cacheData = loadPanelCache()
 
     if (cacheData && cacheData.channelId === channel.id && cacheData.messageId) {
-      const isExpired = Date.now() - cacheData.createdAt >= 24 * 60 * 60 * 1000
+      let todayString = new Date().toLocaleDateString()
+      let createdAtString = new Date(cacheData.createdAt).toLocaleDateString()
+      const isExpired = todayString !== createdAtString
 
       if (!isExpired) {
         try {

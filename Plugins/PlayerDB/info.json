@@ -1,6 +1,6 @@
 {
   "author": "Acedia",
-  "description": "Saves player info such as in game names, tribe names and so on to a sqlite DB",
+  "description": "Saves player info such as in game names, tribe names and so on to a SQLite DB",
   "requirements": {
     "plugins": ["Database"]
   }

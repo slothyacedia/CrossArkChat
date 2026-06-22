@@ -1,7 +1,6 @@
 const path = require("node:path")
 const fs = require("node:fs")
 
-const newLocal = ""
 // --- CENTRALIZED MESSAGES CONFIGURATION ---
 const messageTemplates = {
   noPermission: "You don't have permission to use this command.",
@@ -72,7 +71,7 @@ let lastFlushTime = 0
 
 module.exports = {
   name: "Watchlist",
-  version: "v2.1.1",
+  version: "v2.1.3",
 
   async teardown(cacApi) {
     let textCmd = cacApi.discord.commands.text
@@ -234,50 +233,46 @@ module.exports = {
 
       for (let player of serverPlayers) {
         const steamId = player.steamId
-        if (!steamId) continue
+        const steamName = player.name
+        const ign = player.data?.ign
 
-        const ign = player.data?.ign || player.ign
-        if (!ign) continue
-
-        const isNameWatched = pluginConfig.watchlist.playerNames.includes(ign.toLowerCase())
+        const isNameWatched =
+          pluginConfig.watchlist.playerNames.includes(ign ? String(ign).toLowerCase() : "") ||
+          pluginConfig.watchlist.playerNames.includes(steamName ? String(steamName).toLowerCase() : "")
 
         if (isNameWatched && !pluginConfig.watchlist.steamIds.includes(steamId)) {
           pluginConfig.watchlist.steamIds.push(steamId)
           savePluginConfig(pluginConfig)
-          cacApi.discord.send(pluginConfig.channel, templateReplace(messageTemplates.autoAddedSteam, { steamId, ign }))
+          cacApi.discord.send(pluginConfig.channel, templateReplace(messageTemplates.autoAddedSteam, { steamId, ign: `${ign} (${steamName})` }))
         }
       }
     })
 
     onPacket = async function (packet) {
-      if (packet.metadata?.tribeName && packet.metadata?.tribeId) {
-        const tribeIdStr = packet.metadata.tribeId.toString()
-        const isTribeNameWatched = pluginConfig.watchlist.tribeNames.includes(packet.metadata.tribeName.toLowerCase())
+      let steamId = packet.metadata?.steamId
+      let steamName = packet.player
+      let configWatchlist = pluginConfig.watchlist
 
-        if (isTribeNameWatched && !pluginConfig.watchlist.tribeIds.includes(tribeIdStr)) {
-          pluginConfig.watchlist.tribeIds.push(tribeIdStr)
-          savePluginConfig(pluginConfig)
-          cacApi.discord.send(
-            pluginConfig.channel,
-            templateReplace(messageTemplates.autoAddedTribeId, { tribeId: tribeIdStr, tribeName: packet.metadata.tribeName }),
-          )
-        }
-      }
-
-      if (!isWatched(packet)) return
-
-      const steamId = packet.metadata?.steamId
-
-      if (
-        steamId &&
-        !pluginConfig.watchlist.steamIds.includes(steamId) &&
-        packet.player &&
-        pluginConfig.watchlist.playerNames.includes(packet.player.toLowerCase())
-      ) {
-        pluginConfig.watchlist.steamIds.push(steamId)
+      if (configWatchlist.playerNames.includes(steamName.toLowerCase()) && !configWatchlist.steamIds.includes(steamId)) {
+        configWatchlist.steamIds.push(steamId)
         savePluginConfig(pluginConfig)
         cacApi.discord.send(pluginConfig.channel, templateReplace(messageTemplates.autoAddedSteam, { steamId, ign: packet.player }))
       }
+
+      if (
+        ["tribeLogs", "leftovers"].includes(packet.type) &&
+        configWatchlist.tribeNames.includes(packet.metadata.tribeName) &&
+        !configWatchlist.tribeIds.includes(packet.metadata.tribeId)
+      ) {
+        configWatchlist.tribeIds.push(packet.metadata.tribeId)
+        savePluginConfig(pluginConfig)
+        cacApi.discord.send(
+          pluginConfig.channel,
+          templateReplace(messageTemplates.autoAddedTribeId, { tribeId: packet.metadata.tribeId, tribeName: packet.metadata.tribeName }),
+        )
+      }
+
+      if (!isWatched(packet)) return
 
       switch (packet.type) {
         case "join": {

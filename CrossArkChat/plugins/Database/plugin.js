@@ -1,6 +1,6 @@
 module.exports = {
   name: "Database",
-  version: "v1.0.1",
+  version: "v1.0.2",
 
   async teardown(cacApi) {
     if (cacApi.database) {
@@ -42,7 +42,7 @@ module.exports = {
     }
 
     databaseAPI.tools = {
-      createTable(name) {
+      table(name) {
         const cleanTable = provisionTable(name)
 
         return {
@@ -116,6 +116,10 @@ module.exports = {
             return db.prepare(`SELECT * FROM ${cleanTable} WHERE ${cleanCol} = ?`).all(value)
           },
 
+          allRows() {
+            return db.prepare(`SELECT * FROM ${cleanTable}`).all()
+          },
+
           update(column, value, object) {
             const cleanWhere = column.replace(/[^a-zA-Z0-9_]/g, "")
             const keys = Object.keys(object)
@@ -153,7 +157,7 @@ module.exports = {
       },
     }
 
-    databaseAPI.tools.table = databaseAPI.tools.createTable
+    databaseAPI.tools.createTable = databaseAPI.tools.table
 
     databaseAPI._rawConnection = db
     cacApi.database = databaseAPI

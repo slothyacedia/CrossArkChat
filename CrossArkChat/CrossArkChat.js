@@ -12,7 +12,7 @@ const { GameDig } = gamedig
 const { Client, GatewayIntentBits, REST, Routes, EmbedBuilder } = djs
 const { EventEmitter } = events
 
-const CACJSversion = "v1.3.1-rc (Redundant API Removal)"
+const CACJSversion = "v1.3.3-rc (Config Load Order Change)"
 const processId = process.pid.toString()
 const emitter = new EventEmitter()
 process.title = "CrossArkChat.js"
@@ -46,8 +46,8 @@ function loadConfig() {
   throw new Error(`[CrossArkChat] Unable To Locate A Config File...`)
 }
 
-let config = loadConfig()
 dotenv.config()
+let config = loadConfig()
 console.log(``)
 
 // States
@@ -851,7 +851,7 @@ function createArkAgent(server) {
       let [, steamName, player, text] = chat
       associatedPlayer = cache[cacheKey].players.find((player) => player.name == steamName)
       handlePacket({
-        id: `${server.name}-${Date.now()}`,
+        id: `${server.name}-chat-${Date.now()}`,
         origin: server.name,
         type: "chat",
         server: server.name,
@@ -1104,7 +1104,7 @@ async function discordBot() {
     }
 
     const packet = {
-      id: `discord-${Date.now()}`,
+      id: `Discord-chat-${Date.now()}`,
       origin: "discord",
       type: "chat",
       server: "Discord",
