@@ -547,7 +547,7 @@ function createArkAgent(server) {
     if (serverConnectable == false) {
       state = "DISCONNECTED"
       disconnectCount++
-      if (disconnectCount >= 2) {
+      if (disconnectCount >= 1) {
         let previousPlayers = cache[cacheKey].players
         for (const player of previousPlayers) {
           const timer = setTimeout(() => leaveCache.delete(player.steamId), gracePeriod)
@@ -565,10 +565,16 @@ function createArkAgent(server) {
             player: player.name,
             text: "normal",
             source: "forced-offline",
-            metadata: { forced: true, steamId: player.steamId, sessionStart: player.data?.sessionStart },
+            metadata: {
+              forced: true,
+              steamId: player.steamId,
+              sessionStart: player.data?.sessionStart,
+              cluster: server.data?.cluster || null,
+            },
           })
         }
         cache[cacheKey].players = []
+        emitter.emit("serverStatusUpdate", "offline")
       }
       scheduleReconnect()
       return
@@ -586,6 +592,7 @@ function createArkAgent(server) {
       await rcon.connect()
 
       state = "CONNECTED"
+      emitter.emit("serverStatusUpdate", "online")
       disconnectCount = 0
 
       if (config.logging.rconStatus) console.log(`[${server.name}] RCON Connected`)
@@ -620,6 +627,7 @@ function createArkAgent(server) {
   function handleDisconnect(reason) {
     if (config.logging.rconStatus) console.log(`[${server.name}] RCON Disconnected (${reason})`)
     state = "DISCONNECTED"
+    emitter.emit("serverStatusUpdate", "offline")
     cleanup()
     scheduleReconnect()
   }
@@ -781,7 +789,10 @@ function createArkAgent(server) {
                   player: player.name,
                   text: "normal",
                   source: "listplayers",
-                  metadata: { steamId: player.steamId },
+                  metadata: {
+                    steamId: player.steamId,
+                    cluster: server.data?.cluster || null,
+                  },
                 })
               }
             }
@@ -803,7 +814,11 @@ function createArkAgent(server) {
                   player: player.name,
                   text: "normal",
                   source: "listplayers",
-                  metadata: { steamId: player.steamId, sessionStart: player.data?.sessionStart },
+                  metadata: {
+                    steamId: player.steamId,
+                    sessionStart: player.data?.sessionStart,
+                    cluster: server.data?.cluster || null,
+                  },
                 })
               }
             }
@@ -837,6 +852,8 @@ function createArkAgent(server) {
   setInterval(async () => {
     cache[cacheKey].pluginsLoaded = pluginsLoaded
     cache[cacheKey].serverWasDown = serverWasDown
+    cache[cacheKey].online = await isServerUp()
+    cache[cacheKey].cluster = server.data.cluster
   }, 1000)
 
   // -------------------------
@@ -860,6 +877,7 @@ function createArkAgent(server) {
         source,
         metadata: {
           steamId: associatedPlayer?.steamId || null,
+          cluster: server.data?.cluster || null,
         },
       })
       return
@@ -896,7 +914,12 @@ function createArkAgent(server) {
         player: "System",
         text: message,
         source,
-        metadata: { color, tribeName, tribeId },
+        metadata: {
+          color,
+          tribeName,
+          tribeId,
+          cluster: server.data?.cluster || null,
+        },
       })
       return
     }
@@ -964,6 +987,7 @@ function createArkAgent(server) {
 
   return {
     name: server.name,
+    cluster: server.data?.cluster || null,
     state,
     isServerUp,
     send: async (msg) => {

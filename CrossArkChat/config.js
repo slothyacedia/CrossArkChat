@@ -8,6 +8,9 @@ module.exports = {
       password: "",
       joinLink: "",
       enabled: true,
+      data: {
+        cluster: "Cluster1",
+      },
     },
     {
       name: "Fjordur",
@@ -17,6 +20,9 @@ module.exports = {
       password: "",
       joinLink: "",
       enabled: true,
+      data: {
+        cluster: "Cluster1",
+      },
     },
   ],
   ark: {
@@ -25,7 +31,7 @@ module.exports = {
     commandTimeout: 1000,
     transferGracePeriod: 60000,
     chatCommand: "serverchat",
-    essentialPlugins: ["Permissions", "PlayerUtilities", "DinoUtilities", "ExtendedRcon", "UnicodeRcon", "RewardsEvolved"],
+    essentialPlugins: ["Permissions", "ExtendedRcon"],
     ignoredResponses: ["Server received, But no response!!", "Deactivated", "Force respawning Wild Dinos!"],
     ignoredResponsePrefixes: ["AdminCmd: ", "SERVER: ", "SpawnDino_DS"],
     tribeLogsRegex: /^Tribe\s+(.+?),\s+ID\s+(\d+):\s+Day\s+(\d+),\s+([\d:]+):\s+(?:<RichColor Color="([^"]+)">)?([\s\S]+?)(?:<\/>)?\)?$/,
@@ -203,6 +209,6 @@ module.exports = {
     rconStatus: false,
     discordStatus: true,
     startup: true,
-    plugins: false,
+    plugins: true,
   },
 }
