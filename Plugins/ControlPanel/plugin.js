@@ -347,15 +347,25 @@ module.exports = {
       })
     }
 
-    async function refreshPanels(panelMessages) {
+    async function refreshPanels(panelMessages, specTarget) {
+      let cache = cacApi.cache.get()
+      const targets = specTarget ? [specTarget] : null
+      if (cache[specTarget]?.cluster) {
+        targets.push(`cluster:${cache[specTarget].cluster}`)
+      }
+
       for (const [key, message] of Object.entries(panelMessages)) {
+        if (targets && !targets.includes(key)) {
+          continue
+        }
+
         try {
           const container = key.startsWith("cluster:") ? createClusterEmbed(key.replace("cluster:", "")) : createServerEmbed(key)
-
           await message.edit({
             components: [container],
             flags: MessageFlags.IsComponentsV2,
           })
+          await new Promise((resolve) => setTimeout(resolve, 500))
         } catch {}
       }
     }
@@ -557,7 +567,7 @@ module.exports = {
         switch (idParts[1]) {
           case "rconModal": {
             let [, , scope, target] = idParts
-            let command = interaction.fields.getTextInputField("command")
+            let command = interaction.fields.getTextInputValue("command")
             await interaction.deferReply({ ephemeral: true })
 
             if (scope == "cluster") {
@@ -573,8 +583,9 @@ module.exports = {
                   } else {
                     resultText = `**${result.server}**:\n\`\`\`${result.error.message}\`\`\``
                   }
+                  return resultText
                 })
-                .join(`\n\n`)
+                .join(`\n`)
 
               await interaction.editReply(`RCON Command (${command}) Sent To Cluster **${target}**:\n\n${output}`)
               return
@@ -646,8 +657,9 @@ module.exports = {
                     } else {
                       resultText = `**${result.server}**:\n\`\`\`${result.error.message}\`\`\``
                     }
+                    return resultText
                   })
-                  .join(`\n\n`)
+                  .join(`\n`)
 
                 await interaction.editReply(`Attempted **${actionFormatted}** ${label} From The **${target}** Cluster\n\n${output}`)
                 return
@@ -678,12 +690,12 @@ module.exports = {
     client.on("interactionCreate", interactionHandler)
     packetHandler = async (packet) => {
       if (["join", "leave"].includes(packet.type)) {
-        setTimeout(() => refreshPanels(panelMessages), 1000)
+        setTimeout(() => refreshPanels(panelMessages, packet.server), 1000)
       }
     }
 
     cacApi.events.on("packet", packetHandler)
-    cacApi.events.on("serverStatusUpdate", () => refreshPanels(panelMessages))
+    cacApi.events.on("serverStatusUpdate", (ssuPacket) => refreshPanels(panelMessages, ssuPacket.server))
     initPanels().catch((err) => {
       if (cacConfig.logging.plugins) {
         console.log(`[${this.name}] Panel Init Error`)
