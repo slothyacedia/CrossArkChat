@@ -627,7 +627,6 @@ function createArkAgent(server) {
   function handleDisconnect(reason) {
     if (config.logging.rconStatus) console.log(`[${server.name}] RCON Disconnected (${reason})`)
     state = "DISCONNECTED"
-    emitter.emit("serverStatusUpdate", "offline")
     cleanup()
     scheduleReconnect()
   }
