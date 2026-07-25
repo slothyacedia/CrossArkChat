@@ -12,7 +12,7 @@ const { GameDig } = gamedig
 const { Client, GatewayIntentBits, REST, Routes, EmbedBuilder } = djs
 const { EventEmitter } = events
 
-const CACJSversion = "v1.3.3-rc (Config Load Order Change)"
+const CACJSversion = "v1.4.3-rc (Server Status Update Event)"
 const processId = process.pid.toString()
 const emitter = new EventEmitter()
 process.title = "CrossArkChat.js"
@@ -574,7 +574,13 @@ function createArkAgent(server) {
           })
         }
         cache[cacheKey].players = []
-        emitter.emit("serverStatusUpdate", "offline")
+        let ssuPacket = {
+          server: server.name,
+          oldStatus: "online",
+          newStatus: "offline",
+          serverConfig: server,
+        }
+        emitter.emit("serverStatusUpdate", ssuPacket)
       }
       scheduleReconnect()
       return
@@ -592,7 +598,13 @@ function createArkAgent(server) {
       await rcon.connect()
 
       state = "CONNECTED"
-      emitter.emit("serverStatusUpdate", "online")
+      let ssuPacket = {
+        server: server.name,
+        oldStatus: "offline",
+        newStatus: "online",
+        serverConfig: server,
+      }
+      emitter.emit("serverStatusUpdate", ssuPacket)
       disconnectCount = 0
 
       if (config.logging.rconStatus) console.log(`[${server.name}] RCON Connected`)
@@ -627,6 +639,12 @@ function createArkAgent(server) {
   function handleDisconnect(reason) {
     if (config.logging.rconStatus) console.log(`[${server.name}] RCON Disconnected (${reason})`)
     state = "DISCONNECTED"
+    let ssuPacket = {
+      server: server.name,
+      oldStatus: "online",
+      newStatus: "offline",
+      serverConfig: server,
+    }
     cleanup()
     scheduleReconnect()
   }

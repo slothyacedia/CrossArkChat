@@ -7,7 +7,7 @@ let statusTimer = null
 
 module.exports = {
   name: "Control Panel",
-  version: "v1.0.1",
+  version: "v1.1.1",
 
   async teardown(cacApi) {
     const client = cacApi.discord.getClient()
@@ -43,6 +43,7 @@ module.exports = {
       ContainerBuilder,
       UserSelectMenuBuilder,
       LabelBuilder,
+      CheckboxBuilder,
     } = cacApi.utils.modules.djs
     const childProc = cacApi.utils.modules.child_process
 
@@ -221,6 +222,11 @@ module.exports = {
             new ButtonBuilder().setCustomId(`controlPanel;commandStop;server;${server.name}`).setLabel("Send Stop Command").setStyle(ButtonStyle.Secondary),
           ),
         )
+        .addActionRowComponents((row) =>
+          row.setComponents(
+            new ButtonBuilder().setCustomId(`controlPanel;refresh;server;${server.name}`).setLabel("Refresh Panel").setStyle(ButtonStyle.Success),
+          ),
+        )
 
       return container
     }
@@ -231,7 +237,7 @@ module.exports = {
       let updateTimestampFormatted = `<t:${Math.floor(Date.now() / 1000)}>`
 
       const container = new ContainerBuilder()
-        .addTextDisplayComponents((textDisplay) => textDisplay.setContent(`## ${clusterName} - Central Panel\n-# Updated: ${updateTimestampFormatted}`))
+        .addTextDisplayComponents((textDisplay) => textDisplay.setContent(`## ${clusterName} - Cluster Control\n-# Updated: ${updateTimestampFormatted}`))
         .addSeparatorComponents((separator) => separator)
         .addTextDisplayComponents((textDisplay) => textDisplay.setContent(`Total Players: **${totalPlayers}**`))
         .addSeparatorComponents((separator) => separator)
@@ -250,6 +256,11 @@ module.exports = {
             new ButtonBuilder().setCustomId(`controlPanel;commandStop;cluster;${clusterName}`).setLabel("Send Stop Command").setStyle(ButtonStyle.Secondary),
           ),
         )
+        .addActionRowComponents((row) =>
+          row.setComponents(
+            new ButtonBuilder().setCustomId(`controlPanel;refresh;cluster;${clusterName}`).setLabel("Refresh Panels").setStyle(ButtonStyle.Success),
+          ),
+        )
 
       return container
     }
@@ -262,6 +273,19 @@ module.exports = {
           new ActionRowBuilder().addComponents(
             new TextInputBuilder().setCustomId("command").setLabel("RCON Command").setPlaceholder("saveworld").setStyle(TextInputStyle.Short).setRequired(true),
           ),
+        )
+
+      return modal
+    }
+
+    let createConfirmationModal = (action, scope, target) => {
+      let actionFormatted = action === "commandStop" ? "Stop Command" : String(action).charAt(0).toUpperCase() + action.slice(1).toLowerCase()
+
+      const modal = new ModalBuilder()
+        .setCustomId(`controlPanel;confirmAction;${action};${scope};${target}`)
+        .setTitle(`Confirm: ${actionFormatted}`)
+        .addLabelComponents(
+          new LabelBuilder().setLabel(`Confirm ${target}`).setCheckboxComponent(new CheckboxBuilder().setCustomId("confirmInput").setDefault(false)),
         )
 
       return modal
@@ -349,9 +373,12 @@ module.exports = {
 
     async function refreshPanels(panelMessages, specTarget) {
       let cache = cacApi.cache.get()
-      const targets = specTarget ? [specTarget] : null
+      const targets = specTarget ? [...specTarget] : null
       if (cache[specTarget]?.cluster) {
-        targets.push(`cluster:${cache[specTarget].cluster}`)
+        let clusterId = `cluster:${cache[specTarget].cluster}`
+        if (!targets.includes(clusterId)) {
+          targets.push(clusterId)
+        }
       }
 
       for (const [key, message] of Object.entries(panelMessages)) {
@@ -365,7 +392,6 @@ module.exports = {
             components: [container],
             flags: MessageFlags.IsComponentsV2,
           })
-          await new Promise((resolve) => setTimeout(resolve, 500))
         } catch {}
       }
     }
@@ -396,29 +422,25 @@ module.exports = {
       let createdAtString = new Date(panelCache.createdAt).toLocaleDateString()
 
       if (createdAtString !== todayString) {
-        for (const messageId of Object.values(panelCache.messages || {})) {
+        const deletePromises = Object.values(panelCache.messages || {}).map(async (messageId) => {
           try {
-            const message = await controlPanelChannel.messages.fetch(messageId)
+            const message = controlPanelChannel.messages.cache.get(messageId) || (await controlPanelChannel.messages.fetch(messageId))
             await message.delete()
           } catch {}
-        }
+        })
+        await Promise.all(deletePromises)
 
-        panelCache = {
-          createdAt: Date.now(),
-          messages: {},
-        }
+        panelCache = { createdAt: Date.now(), messages: {} }
       }
 
-      for (const server of enabledServers) {
-        let message = null
+      const serverPromises = enabledServers.map(async (server) => {
         const messageId = panelCache.messages[server.name]
+        let message = null
 
         if (messageId) {
           try {
-            message = await controlPanelChannel.messages.fetch(messageId)
-          } catch {
-            message = null
-          }
+            message = controlPanelChannel.messages.cache.get(messageId) || (await controlPanelChannel.messages.fetch(messageId))
+          } catch {}
         }
 
         if (!message) {
@@ -426,25 +448,23 @@ module.exports = {
             components: [createServerEmbed(server.name)],
             flags: MessageFlags.IsComponentsV2,
           })
-
           panelCache.messages[server.name] = message.id
         }
 
-        panelMessages[server.name] = message
-      }
+        return { key: server.name, message }
+      })
 
+      let clusterPromises = []
       if (pluginConfig.cluster) {
-        for (let clusterName of getClusters()) {
-          let clusterKey = `cluster:${clusterName}`
-          let message = null
+        clusterPromises = getClusters().map(async (clusterName) => {
+          const clusterKey = `cluster:${clusterName}`
           const messageId = panelCache.messages[clusterKey]
+          let message = null
 
           if (messageId) {
             try {
-              message = await controlPanelChannel.messages.fetch(messageId)
-            } catch {
-              message = null
-            }
+              message = controlPanelChannel.messages.cache.get(messageId) || (await controlPanelChannel.messages.fetch(messageId))
+            } catch {}
           }
 
           if (!message) {
@@ -452,18 +472,23 @@ module.exports = {
               components: [createClusterEmbed(clusterName)],
               flags: MessageFlags.IsComponentsV2,
             })
-
             panelCache.messages[clusterKey] = message.id
           }
 
-          panelMessages[clusterKey] = message
-        }
+          return { key: clusterKey, message }
+        })
       }
+
+      const results = await Promise.all([...serverPromises, ...clusterPromises])
+      results.forEach(({ key, message }) => {
+        panelMessages[key] = message
+      })
 
       panelCache.createdAt = Date.now()
       savePanelCache(panelCache)
 
       await refreshPanels(panelMessages)
+
       if (cacConfig.logging.plugins) {
         console.log(`[${this.name}] Panels Ready`)
       }
@@ -498,66 +523,23 @@ module.exports = {
 
           case "start":
           case "stop":
-          case "restart": {
-            await interaction.deferReply({ ephemeral: true })
-            let servers =
-              scope == "cluster"
-                ? getClusterServers(target).map((server) => {
-                    server.name
-                  })
-                : [target]
-
-            let results = []
-
-            for (let serverName of servers) {
-              try {
-                let scriptKey = `${action}Script`
-                let execCommand = enabledServers.find((server) => server.name == serverName)?.data?.controlPanel?.[scriptKey]
-
-                if (!execCommand) {
-                  throw new Error(`No ${scriptKey} Configured For ${serverName}`)
-                }
-
-                await runScript(execCommand)
-                results.push(`✅ **${serverName}** ${actionFormatted} Success`)
-              } catch (error) {
-                results.push(`❎ **${serverName}** ${actionFormatted} Failed - ${error.message}`)
-              }
-            }
-
-            await interaction.editReply(`Executed ${actionFormatted}: \n\n${results.join(`\n`)}`)
+          case "restart":
+          case "commandStop": {
+            await interaction.showModal(createConfirmationModal(action, scope, target))
             return
           }
 
-          case "commandStop": {
+          case "refresh": {
             await interaction.deferReply({ ephemeral: true })
             let servers =
               scope == "cluster"
                 ? getClusterServers(target).map((server) => {
-                    server.name
+                    return server.name
                   })
                 : [target]
 
-            let results = []
-
-            for (let serverName of servers) {
-              try {
-                let serverConfig = getServer(serverName)
-                let stopCommand = serverConfig?.data?.controlPanel?.stopCommand
-                if (!stopCommand) {
-                  throw new Error(`No stopCommand Configured For ${target}`)
-                }
-                let result = await sendRcon(serverName, stopCommand)
-                if (!result.success) {
-                  throw result.error
-                }
-                results.push(`✅ **${serverName}** ${actionFormatted} Success`)
-              } catch {
-                results.push(`❎ **${serverName}** ${actionFormatted} Failed - ${error.message}`)
-              }
-            }
-
-            await interaction.editReply(`Executed Stop Command: \n\n${results.join(`\n`)}`)
+            await interaction.editReply(`Refreshing Panel${scope == "cluster" ? "s" : ""}`)
+            refreshPanels(panelMessages, servers)
             return
           }
         }
@@ -576,7 +558,7 @@ module.exports = {
                 .map((result) => {
                   let resultText
                   if (result.success) {
-                    resultText = `**${result.server}**:\n\`\`\`${result.response
+                    resultText = `**${result.server}**:\n\`\`\`${(result.response || "No Response From Server")
                       .split("\n")
                       .filter((line) => line.trim())
                       .join("\n")}\`\`\``
@@ -593,12 +575,12 @@ module.exports = {
               let result = await sendRcon(target, command)
               let resultText
               if (result.success) {
-                resultText = `**${result.server}**:\n\`\`\`${result.response
+                resultText = `\`\`\`${(result.response || "No Response From Server")
                   .split("\n")
                   .filter((line) => line.trim())
                   .join("\n")}\`\`\``
               } else {
-                resultText = `**${result.server}**:\n\`\`\`${result.error.message}\`\`\``
+                resultText = `\`\`\`${result.error.message}\`\`\``
               }
 
               await interaction.editReply(`RCON Command (${command}) Sent To Server **${target}**:\n\n${resultText}`)
@@ -650,7 +632,7 @@ module.exports = {
                   .map((result) => {
                     let resultText
                     if (result.success) {
-                      resultText = `**${result.server}**:\n\`\`\`${result.response
+                      resultText = `**${result.server}**:\n\`\`\`${(result.response || "No Response From Server")
                         .split("\n")
                         .filter((line) => line.trim())
                         .join("\n")}\`\`\``
@@ -669,7 +651,7 @@ module.exports = {
                 const result = await sendRcon(target, command)
                 let resultText
                 if (result.success) {
-                  resultText = `\`\`\`${result.response
+                  resultText = `\`\`\`${(result.response || "No Response From Server")
                     .split("\n")
                     .filter((line) => line.trim())
                     .join("\n")}\`\`\``
@@ -682,6 +664,60 @@ module.exports = {
               }
             }
             break
+          }
+
+          case "confirmAction": {
+            let [, , action, scope, target] = idParts
+            let isConfirmed = interaction.fields.getCheckbox("confirmInput")
+
+            if (!isConfirmed) {
+              await interaction.reply({ content: "❎ Action Cancelled, Check The Confirmation Box.", ephemeral: true })
+              return
+            }
+
+            await interaction.deferReply({ ephemeral: true })
+
+            let actionFormatted = action === "commandStop" ? "Stop Command" : String(action).charAt(0).toUpperCase() + action.slice(1).toLowerCase()
+            let servers = scope === "cluster" ? getClusterServers(target).map((server) => server.name) : [target]
+            let results = []
+
+            if (["start", "stop", "restart"].includes(action)) {
+              for (let serverName of servers) {
+                try {
+                  let scriptKey = `${action}Script`
+                  let execCommand = enabledServers.find((server) => server.name === serverName)?.data?.controlPanel?.[scriptKey]
+
+                  if (!execCommand) {
+                    throw new Error(`No ${scriptKey} Configured For ${serverName}`)
+                  }
+
+                  await runScript(execCommand)
+                  results.push(`✅ **${serverName}** ${actionFormatted} Success`)
+                } catch (error) {
+                  results.push(`❎ **${serverName}** ${actionFormatted} Failed - ${error.message}`)
+                }
+              }
+            } else if (action === "commandStop") {
+              for (let serverName of servers) {
+                try {
+                  let serverConfig = getServer(serverName)
+                  let stopCommand = serverConfig?.data?.controlPanel?.stopCommand
+                  if (!stopCommand) {
+                    throw new Error(`No Stop Command Configured For ${target}`)
+                  }
+                  let result = await sendRcon(serverName, stopCommand)
+                  if (!result.success) {
+                    throw result.error
+                  }
+                  results.push(`✅ **${serverName}** ${actionFormatted} Success`)
+                } catch (error) {
+                  results.push(`❎ **${serverName}** ${actionFormatted} Failed - ${error.message}`)
+                }
+              }
+            }
+
+            await interaction.editReply(`Executed ${actionFormatted}:\n\n${results.join("\n")}`)
+            return
           }
         }
       }
