@@ -3,11 +3,13 @@ const path = require("node:path")
 
 let interactionHandler = null
 let packetHandler = null
-let statusTimer = null
+let ssuPacketHandler = null
+let ssuPacketHandling = null
+let ssuPacketQueue = []
 
 module.exports = {
   name: "Control Panel",
-  version: "v1.1.1",
+  version: "v1.2.1",
 
   async teardown(cacApi) {
     const client = cacApi.discord.getClient()
@@ -22,9 +24,15 @@ module.exports = {
       packetHandler = null
     }
 
-    if (statusTimer) {
-      clearInterval(statusTimer)
-      statusTimer = null
+    if (ssuPacketHandler) {
+      cacApi.events.off("serverStatusUpdate", ssuPacketHandler)
+      ssuPacketHandler = null
+    }
+
+    if (ssuPacketHandling) {
+      clearTimeout(ssuPacketHandling)
+      ssuPacketHandling = null
+      ssuPacketQueue = []
     }
   },
 
@@ -234,12 +242,16 @@ module.exports = {
     let createClusterEmbed = (clusterName) => {
       let cache = cacApi.cache.get()
       let totalPlayers = getClusterPlayers(clusterName).length
+      let clusterServers = getClusterServers(clusterName)
+      let onlineServers = clusterServers.filter((server) => cache[server.name]?.online)
       let updateTimestampFormatted = `<t:${Math.floor(Date.now() / 1000)}>`
 
       const container = new ContainerBuilder()
         .addTextDisplayComponents((textDisplay) => textDisplay.setContent(`## ${clusterName} - Cluster Control\n-# Updated: ${updateTimestampFormatted}`))
         .addSeparatorComponents((separator) => separator)
-        .addTextDisplayComponents((textDisplay) => textDisplay.setContent(`Total Players: **${totalPlayers}**`))
+        .addTextDisplayComponents((textDisplay) =>
+          textDisplay.setContent(`Total Players: **${totalPlayers}**\nOnline Servers: **${onlineServers.length}**/**${clusterServers.length}**`),
+        )
         .addSeparatorComponents((separator) => separator)
         .addActionRowComponents((row) =>
           row.setComponents(
@@ -373,11 +385,16 @@ module.exports = {
 
     async function refreshPanels(panelMessages, specTarget) {
       let cache = cacApi.cache.get()
-      const targets = specTarget ? [...specTarget] : null
-      if (cache[specTarget]?.cluster) {
-        let clusterId = `cluster:${cache[specTarget].cluster}`
-        if (!targets.includes(clusterId)) {
-          targets.push(clusterId)
+      const targets = specTarget ? (Array.isArray(specTarget) ? [...specTarget] : [specTarget]) : null
+
+      if (targets) {
+        for (let target of targets) {
+          if (cache[target]?.cluster) {
+            let clusterId = `cluster:${cache[target].cluster}`
+            if (!targets.includes(clusterId)) {
+              targets.push(clusterId)
+            }
+          }
         }
       }
 
@@ -730,11 +747,24 @@ module.exports = {
       }
     }
 
+    ssuPacketHandler = async (ssuPacket) => {
+      if (!ssuPacketQueue.includes(ssuPacket.server)) {
+        ssuPacketQueue.push(ssuPacket.server)
+      }
+      if (!ssuPacketHandling) {
+        ssuPacketHandling = setTimeout(async () => {
+          await refreshPanels(panelMessages, ssuPacketQueue)
+          ssuPacketQueue = []
+          ssuPacketHandling = null
+        }, 1000)
+      }
+    }
+
     cacApi.events.on("packet", packetHandler)
-    cacApi.events.on("serverStatusUpdate", (ssuPacket) => refreshPanels(panelMessages, ssuPacket.server))
+    cacApi.events.on("serverStatusUpdate", ssuPacketHandler)
     initPanels().catch((err) => {
       if (cacConfig.logging.plugins) {
-        console.log(`[${this.name}] Panel Init Error`)
+        console.log(`[${this.name}] Panel Init Error`, err)
       }
     })
   },

@@ -209,6 +209,6 @@ module.exports = {
     rconStatus: false,
     discordStatus: true,
     startup: true,
-    plugins: true,
+    plugins: false,
   },
 }

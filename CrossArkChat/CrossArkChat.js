@@ -12,7 +12,7 @@ const { GameDig } = gamedig
 const { Client, GatewayIntentBits, REST, Routes, EmbedBuilder } = djs
 const { EventEmitter } = events
 
-const CACJSversion = "v1.4.3-rc (Server Status Update Event)"
+const CACJSversion = "v1.4.4-sr (Server Status Update Process Orders)"
 const processId = process.pid.toString()
 const emitter = new EventEmitter()
 process.title = "CrossArkChat.js"
@@ -463,6 +463,7 @@ function createArkAgent(server) {
   let pollPlayersFailCount = 0
   let heartbeatFailCount = 0
   let disconnectCount = 0
+  let ssuPacket
   const gracePeriod = Number(config.ark.transferGracePeriod) || 30000
 
   let commandTimeout = Number(config.ark.commandTimeout) || 5000
@@ -548,39 +549,42 @@ function createArkAgent(server) {
       state = "DISCONNECTED"
       disconnectCount++
       if (disconnectCount >= 1) {
-        let previousPlayers = cache[cacheKey].players
-        for (const player of previousPlayers) {
-          const timer = setTimeout(() => leaveCache.delete(player.steamId), gracePeriod)
+        if (disconnectCount == 1) {
+          let previousPlayers = cache[cacheKey].players
+          for (const player of previousPlayers) {
+            const timer = setTimeout(() => leaveCache.delete(player.steamId), gracePeriod)
 
-          leaveCache.set(player.steamId, {
-            sessionStart: player.data?.sessionStart,
-            timer,
-          })
-
-          handlePacket({
-            id: `${server.name}-leave-${Date.now()}`,
-            origin: server.name,
-            type: "leave",
-            server: server.name,
-            player: player.name,
-            text: "normal",
-            source: "forced-offline",
-            metadata: {
-              forced: true,
-              steamId: player.steamId,
+            leaveCache.set(player.steamId, {
               sessionStart: player.data?.sessionStart,
-              cluster: server.data?.cluster || null,
-            },
-          })
+              timer,
+            })
+
+            handlePacket({
+              id: `${server.name}-leave-${Date.now()}`,
+              origin: server.name,
+              type: "leave",
+              server: server.name,
+              player: player.name,
+              text: "normal",
+              source: "forced-offline",
+              metadata: {
+                forced: true,
+                steamId: player.steamId,
+                sessionStart: player.data?.sessionStart,
+                cluster: server.data?.cluster || null,
+              },
+            })
+          }
+          cache[cacheKey].players = []
+          ssuPacket = {
+            server: server.name,
+            oldStatus: "online",
+            newStatus: "offline",
+            serverConfig: server,
+          }
+
+          emitter.emit("serverStatusUpdate", ssuPacket)
         }
-        cache[cacheKey].players = []
-        let ssuPacket = {
-          server: server.name,
-          oldStatus: "online",
-          newStatus: "offline",
-          serverConfig: server,
-        }
-        emitter.emit("serverStatusUpdate", ssuPacket)
       }
       scheduleReconnect()
       return
@@ -598,7 +602,7 @@ function createArkAgent(server) {
       await rcon.connect()
 
       state = "CONNECTED"
-      let ssuPacket = {
+      ssuPacket = {
         server: server.name,
         oldStatus: "offline",
         newStatus: "online",
@@ -639,12 +643,6 @@ function createArkAgent(server) {
   function handleDisconnect(reason) {
     if (config.logging.rconStatus) console.log(`[${server.name}] RCON Disconnected (${reason})`)
     state = "DISCONNECTED"
-    let ssuPacket = {
-      server: server.name,
-      oldStatus: "online",
-      newStatus: "offline",
-      serverConfig: server,
-    }
     cleanup()
     scheduleReconnect()
   }
@@ -1025,7 +1023,7 @@ let loadedPlugins = new Map()
 async function loadPlugins(forced = false) {
   let priorityPlugins = config.plugins.loadOrder || ["CrossArkChat", "Database"]
 
-  const pluginsPath = path.join(runtimeDir, "plugins")
+  const pluginsPath = path.join(runtimeDir, "Plugins")
   if (!fs.existsSync(pluginsPath)) return
 
   const folders = fs.readdirSync(pluginsPath).filter((f) => {
