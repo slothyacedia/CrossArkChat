@@ -5,7 +5,7 @@ let interactionHandler = null
 let packetHandler = null
 let ssuPacketHandler = null
 let ssuPacketHandling = null
-let ssuPacketQueue = []
+let ssuPacketQueue = new Set()
 
 module.exports = {
   name: "Control Panel",
@@ -32,8 +32,8 @@ module.exports = {
     if (ssuPacketHandling) {
       clearTimeout(ssuPacketHandling)
       ssuPacketHandling = null
-      ssuPacketQueue = []
     }
+    ssuPacketQueue.clear()
   },
 
   async setup(cacApi) {
@@ -41,15 +41,12 @@ module.exports = {
       ActionRowBuilder,
       ButtonBuilder,
       ButtonStyle,
-      EmbedBuilder,
       ModalBuilder,
       StringSelectMenuBuilder,
       TextInputBuilder,
       TextInputStyle,
-      SectionBuilder,
       MessageFlags,
       ContainerBuilder,
-      UserSelectMenuBuilder,
       LabelBuilder,
       CheckboxBuilder,
     } = cacApi.utils.modules.djs
@@ -93,20 +90,11 @@ module.exports = {
       )
     }
 
-    let loadConfig = () => {
-      return JSON.parse(fs.readFileSync(configPath))
-    }
+    let loadConfig = () => JSON.parse(fs.readFileSync(configPath))
 
     let loadPanelCache = () => {
-      let defaultPanelCache = {
-        createdAt: "",
-        messages: {},
-      }
-
-      if (!fs.existsSync(panelsPath)) {
-        return defaultPanelCache
-      }
-
+      let defaultPanelCache = { createdAt: "", messages: {} }
+      if (!fs.existsSync(panelsPath)) return defaultPanelCache
       try {
         return JSON.parse(fs.readFileSync(panelsPath))
       } catch {
@@ -120,43 +108,21 @@ module.exports = {
 
     let isServerOnline = (serverName) => {
       let cache = cacApi.cache.get()
-      const server = cache[serverName]
-
-      if (!server) {
-        return false
-      }
-
-      return server.online || false
+      return cache[serverName]?.online || false
     }
 
-    let getServer = (serverName) => {
-      return enabledServers.find((server) => server.name === serverName)
-    }
+    let getServer = (serverName) => enabledServers.find((server) => server.name === serverName)
 
-    let getClusters = () => {
-      return [
-        ...new Set(
-          enabledServers
-            .map((server) => {
-              return server.data.cluster
-            })
-            .filter(Boolean),
-        ),
-      ]
-    }
+    let getClusters = () => [...new Set(enabledServers.map((server) => server.data.cluster).filter(Boolean))]
 
-    let getClusterServers = (clusterName) =>
-      enabledServers.filter((server) => {
-        return server.data.cluster === clusterName
-      })
+    let getClusterServers = (clusterName) => enabledServers.filter((server) => server.data.cluster === clusterName)
 
     let getFormattedPlayerList = (serverName) => {
       let cache = cacApi.cache.get()
-      let server = cache[serverName]
-      let result
+      let players = cache[serverName]?.players || []
 
-      if (server.players.length > 0) {
-        result = server.players
+      if (players.length > 0) {
+        return players
           .map((player) => {
             if (player.data?.ign) {
               return `${player.data.ign} (${player.name}) [${player.data.tribeName}]: \`${player.steamId}\``
@@ -164,51 +130,42 @@ module.exports = {
             return `${player.name}: \`${player.steamId}\``
           })
           .join("\n")
-      } else {
-        result = `No Players Online`
       }
-      return result
+      return "No Players Online"
     }
 
     let getClusterPlayers = (clusterName) => {
       let cache = cacApi.cache.get()
       let players = []
       Object.entries(cache).forEach(([name, serverCache]) => {
-        if (serverCache.cluster == clusterName) {
+        if (serverCache?.cluster === clusterName && Array.isArray(serverCache.players)) {
           players.push(
-            ...serverCache.players.map((player) => {
-              return {
-                server: name,
-                ...player,
-              }
-            }),
+            ...serverCache.players.map((player) => ({
+              server: name,
+              ...player,
+            })),
           )
         }
       })
-
       return players
     }
 
     let getServerPlayers = (serverName) => {
       let cache = cacApi.cache.get()
       return (
-        cache[serverName]?.players.map((player) => {
-          return {
-            server: serverName,
-            ...player,
-          }
-        }) || []
+        cache[serverName]?.players?.map((player) => ({
+          server: serverName,
+          ...player,
+        })) || []
       )
     }
 
     let createServerEmbed = (serverName) => {
-      let cache = cacApi.cache.get()
-      let server = enabledServers.find((enabledServer) => enabledServer.name == serverName)
+      let server = getServer(serverName)
       let isOnline = isServerOnline(serverName)
       let updateTimestampFormatted = `<t:${Math.floor(Date.now() / 1000)}>`
 
-      let players = cache[serverName].players
-      const container = new ContainerBuilder()
+      return new ContainerBuilder()
         .addTextDisplayComponents((textDisplay) =>
           textDisplay.setContent(`## ${isOnline ? "🟢" : "🔴"} ${server.data.cluster} - ${server.name}\n-# Updated: ${updateTimestampFormatted}`),
         )
@@ -235,8 +192,6 @@ module.exports = {
             new ButtonBuilder().setCustomId(`controlPanel;refresh;server;${server.name}`).setLabel("Refresh Panel").setStyle(ButtonStyle.Success),
           ),
         )
-
-      return container
     }
 
     let createClusterEmbed = (clusterName) => {
@@ -246,7 +201,7 @@ module.exports = {
       let onlineServers = clusterServers.filter((server) => cache[server.name]?.online)
       let updateTimestampFormatted = `<t:${Math.floor(Date.now() / 1000)}>`
 
-      const container = new ContainerBuilder()
+      return new ContainerBuilder()
         .addTextDisplayComponents((textDisplay) => textDisplay.setContent(`## ${clusterName} - Cluster Control\n-# Updated: ${updateTimestampFormatted}`))
         .addSeparatorComponents((separator) => separator)
         .addTextDisplayComponents((textDisplay) =>
@@ -273,12 +228,10 @@ module.exports = {
             new ButtonBuilder().setCustomId(`controlPanel;refresh;cluster;${clusterName}`).setLabel("Refresh Panels").setStyle(ButtonStyle.Success),
           ),
         )
-
-      return container
     }
 
     let createRconModal = (scope, target) => {
-      const modal = new ModalBuilder()
+      return new ModalBuilder()
         .setCustomId(`controlPanel;rconModal;${scope};${target}`)
         .setTitle("Send RCON Command")
         .addComponents(
@@ -286,21 +239,17 @@ module.exports = {
             new TextInputBuilder().setCustomId("command").setLabel("RCON Command").setPlaceholder("saveworld").setStyle(TextInputStyle.Short).setRequired(true),
           ),
         )
-
-      return modal
     }
 
     let createConfirmationModal = (action, scope, target) => {
       let actionFormatted = action === "commandStop" ? "Stop Command" : String(action).charAt(0).toUpperCase() + action.slice(1).toLowerCase()
 
-      const modal = new ModalBuilder()
+      return new ModalBuilder()
         .setCustomId(`controlPanel;confirmAction;${action};${scope};${target}`)
         .setTitle(`Confirm: ${actionFormatted}`)
         .addLabelComponents(
           new LabelBuilder().setLabel(`Confirm ${target}`).setCheckboxComponent(new CheckboxBuilder().setCustomId("confirmInput").setDefault(false)),
         )
-
-      return modal
     }
 
     let createPlayerActionModal = (action, scope, target) => {
@@ -318,20 +267,14 @@ module.exports = {
               .setPlaceholder("Select a player")
               .addOptions(
                 players.slice(0, 25).map((player) => {
-                  let label = ""
-                  let value = String(player.steamId)
-                  if (player.data?.ign) {
-                    label = `${player.data.ign} (${player.name}) [${player.data.tribeName}]: ${player.steamId}`
-                  } else {
-                    label = `${player.name}: ${player.steamId}`
-                  }
+                  let label = player.data?.ign
+                    ? `${player.data.ign} (${player.name}) [${player.data.tribeName}]: ${player.steamId}`
+                    : `${player.name}: ${player.steamId}`
 
-                  if (scope == "cluster") {
+                  if (scope === "cluster") {
                     label = `${player.server} - ${label}`
                   }
-                  label = label.slice(0, 100)
-
-                  return { label, value }
+                  return { label: label.slice(0, 100), value: String(player.steamId) }
                 }),
               ),
           ),
@@ -360,24 +303,19 @@ module.exports = {
 
     let sendClusterRcon = async (clusterName, command) => {
       let results = []
-
       for (const server of getClusterServers(clusterName)) {
         results.push({
           server: server.name,
           ...(await sendRcon(server.name, command)),
         })
       }
-
       return results
     }
 
     let runScript = (command) => {
       return new Promise((resolve, reject) => {
         childProc.exec(command, (error, stdout, stderr) => {
-          if (error) {
-            reject(error)
-            return
-          }
+          if (error) return reject(error)
           resolve({ stdout, stderr })
         })
       })
@@ -399,9 +337,7 @@ module.exports = {
       }
 
       for (const [key, message] of Object.entries(panelMessages)) {
-        if (targets && !targets.includes(key)) {
-          continue
-        }
+        if (targets && !targets.includes(key)) continue
 
         try {
           const container = key.startsWith("cluster:") ? createClusterEmbed(key.replace("cluster:", "")) : createServerEmbed(key)
@@ -417,8 +353,8 @@ module.exports = {
     if (!pluginConfig.channel) {
       if (cacConfig.logging.plugins) {
         console.log(`[${this.name}] No Control Panel Channel Configured`)
-        return
       }
+      return
     }
 
     const client = cacApi.discord.getClient()
@@ -427,8 +363,8 @@ module.exports = {
     if (!controlPanelChannel) {
       if (cacConfig.logging.plugins) {
         console.log(`[${this.name}] Channel With Id ${pluginConfig.channel} Not Found`)
-        return
       }
+      return
     }
 
     let panelCache = loadPanelCache()
@@ -506,62 +442,42 @@ module.exports = {
 
       await refreshPanels(panelMessages)
 
-      if (cacConfig.logging.plugins) {
-        console.log(`[${this.name}] Panels Ready`)
-      }
+      if (cacConfig.logging.plugins) console.log(`[${this.name}] Panels Ready`)
     }
 
     interactionHandler = async (interaction) => {
-      if (!interaction.customId || !interaction.customId.startsWith("controlPanel;")) {
-        return
-      }
+      if (!interaction.customId || !interaction.customId.startsWith("controlPanel;")) return
 
       let idParts = interaction.customId.split(";")
 
       if (interaction.isButton()) {
-        let [interactionCoreId, action, scope, target] = idParts
-        let actionFormatted = String(action).charAt(0).toUpperCase() + action.slice(1).toLowerCase()
+        let [, action, scope, target] = idParts
 
         switch (action) {
           case "rcon": {
-            await interaction.showModal(createRconModal(scope, target))
-            return
+            return interaction.showModal(createRconModal(scope, target))
           }
 
-          case "kick": {
-            await interaction.showModal(createPlayerActionModal(action, scope, target))
-            return
-          }
-
+          case "kick":
           case "ban": {
-            await interaction.showModal(createPlayerActionModal(action, scope, target))
-            return
+            return interaction.showModal(createPlayerActionModal(action, scope, target))
           }
 
           case "start":
           case "stop":
           case "restart":
           case "commandStop": {
-            await interaction.showModal(createConfirmationModal(action, scope, target))
-            return
+            return interaction.showModal(createConfirmationModal(action, scope, target))
           }
 
           case "refresh": {
             await interaction.deferReply({ ephemeral: true })
-            let servers =
-              scope == "cluster"
-                ? getClusterServers(target).map((server) => {
-                    return server.name
-                  })
-                : [target]
-
-            await interaction.editReply(`Refreshing Panel${scope == "cluster" ? "s" : ""}`)
+            let servers = scope === "cluster" ? getClusterServers(target).map((server) => server.name) : [target]
+            await interaction.editReply(`Refreshing Panel${scope === "cluster" ? "s" : ""}`)
             refreshPanels(panelMessages, servers)
             return
           }
         }
-
-        return
       } else if (interaction.isModalSubmit()) {
         switch (idParts[1]) {
           case "rconModal": {
@@ -569,36 +485,34 @@ module.exports = {
             let command = interaction.fields.getTextInputValue("command")
             await interaction.deferReply({ ephemeral: true })
 
-            if (scope == "cluster") {
+            if (scope === "cluster") {
               let results = await sendClusterRcon(target, command)
               let output = results
-                .map((result) => {
-                  let resultText
-                  if (result.success) {
-                    resultText = `**${result.server}**:\n\`\`\`${(result.response || "No Response From Server")
-                      .split("\n")
-                      .filter((line) => line.trim())
-                      .join("\n")}\`\`\``
-                  } else {
-                    resultText = `**${result.server}**:\n\`\`\`${result.error.message}\`\`\``
-                  }
-                  return resultText
-                })
-                .join(`\n`)
+                .map(
+                  (result) =>
+                    `**${result.server}**:\n\`\`\`${
+                      result.success
+                        ? (result.response || "No Response From Server")
+                            .split("\n")
+                            .filter((l) => l.trim())
+                            .join("\n")
+                        : result.error.message
+                    }\`\`\``,
+                )
+                .join("\n")
 
               await interaction.editReply(`RCON Command (${command}) Sent To Cluster **${target}**:\n\n${output}`)
               return
-            } else if (scope == "server") {
+            } else if (scope === "server") {
               let result = await sendRcon(target, command)
-              let resultText
-              if (result.success) {
-                resultText = `\`\`\`${(result.response || "No Response From Server")
-                  .split("\n")
-                  .filter((line) => line.trim())
-                  .join("\n")}\`\`\``
-              } else {
-                resultText = `\`\`\`${result.error.message}\`\`\``
-              }
+              let resultText = `\`\`\`${
+                result.success
+                  ? (result.response || "No Response From Server")
+                      .split("\n")
+                      .filter((l) => l.trim())
+                      .join("\n")
+                  : result.error.message
+              }\`\`\``
 
               await interaction.editReply(`RCON Command (${command}) Sent To Server **${target}**:\n\n${resultText}`)
               return
@@ -608,7 +522,6 @@ module.exports = {
 
           case "playerAction": {
             let [, , action, scope, target] = idParts
-            let steamId
             let selectValues = []
 
             try {
@@ -617,68 +530,45 @@ module.exports = {
               selectValues = []
             }
 
-            steamId = selectValues.length ? selectValues[0] : interaction.fields.getTextInputValue("player").trim()
-
-            let serverName = scope == "cluster" ? getClusterPlayers(target).find((player) => player.steamId == steamId)?.server : target
-            let cache = cacApi.cache.get()
-            let player = serverName ? cache[serverName].players.find((player) => player.steamId == steamId) : null
+            let steamId = selectValues.length ? selectValues[0] : interaction.fields.getTextInputValue("player").trim()
             let label = `Steam Id **${steamId}**`
 
             await interaction.deferReply({ ephemeral: true })
 
-            let actionFormatted
-            let command
-            switch (action) {
-              case "kick": {
-                actionFormatted = "Kicking"
-                command = `kickPlayer ${steamId}`
-                break
-              }
+            let actionFormatted = action === "kick" ? "Kicking" : "Banning"
+            let command = `${action}Player ${steamId}`
 
-              case "ban": {
-                actionFormatted = "Banning"
-                command = `banPlayer ${steamId}`
-                break
-              }
-            }
+            if (scope === "cluster") {
+              const results = await sendClusterRcon(target, command)
+              const output = results
+                .map(
+                  (result) =>
+                    `**${result.server}**:\n\`\`\`${
+                      result.success
+                        ? (result.response || "No Response From Server")
+                            .split("\n")
+                            .filter((l) => l.trim())
+                            .join("\n")
+                        : result.error.message
+                    }\`\`\``,
+                )
+                .join("\n")
 
-            switch (scope) {
-              case "cluster": {
-                const results = await sendClusterRcon(target, command)
-                const output = results
-                  .map((result) => {
-                    let resultText
-                    if (result.success) {
-                      resultText = `**${result.server}**:\n\`\`\`${(result.response || "No Response From Server")
-                        .split("\n")
-                        .filter((line) => line.trim())
-                        .join("\n")}\`\`\``
-                    } else {
-                      resultText = `**${result.server}**:\n\`\`\`${result.error.message}\`\`\``
-                    }
-                    return resultText
-                  })
-                  .join(`\n`)
+              await interaction.editReply(`Attempted **${actionFormatted}** ${label} From The **${target}** Cluster\n\n${output}`)
+              return
+            } else if (scope === "server") {
+              const result = await sendRcon(target, command)
+              let resultText = `\`\`\`${
+                result.success
+                  ? (result.response || "No Response From Server")
+                      .split("\n")
+                      .filter((l) => l.trim())
+                      .join("\n")
+                  : result.error.message
+              }\`\`\``
 
-                await interaction.editReply(`Attempted **${actionFormatted}** ${label} From The **${target}** Cluster\n\n${output}`)
-                return
-              }
-
-              case "server": {
-                const result = await sendRcon(target, command)
-                let resultText
-                if (result.success) {
-                  resultText = `\`\`\`${(result.response || "No Response From Server")
-                    .split("\n")
-                    .filter((line) => line.trim())
-                    .join("\n")}\`\`\``
-                } else {
-                  resultText = `\`\`\`${result.error.message}\`\`\``
-                }
-
-                await interaction.editReply(`Attempted **${actionFormatted}** ${label} From **${target}**\n\n${resultText}`)
-                return
-              }
+              await interaction.editReply(`Attempted **${actionFormatted}** ${label} From **${target}**\n\n${resultText}`)
+              return
             }
             break
           }
@@ -722,10 +612,12 @@ module.exports = {
                   if (!stopCommand) {
                     throw new Error(`No Stop Command Configured For ${target}`)
                   }
+
                   let result = await sendRcon(serverName, stopCommand)
                   if (!result.success) {
                     throw result.error
                   }
+
                   results.push(`✅ **${serverName}** ${actionFormatted} Success`)
                 } catch (error) {
                   results.push(`❎ **${serverName}** ${actionFormatted} Failed - ${error.message}`)
@@ -741,27 +633,43 @@ module.exports = {
     }
 
     client.on("interactionCreate", interactionHandler)
+
     packetHandler = async (packet) => {
       if (["join", "leave"].includes(packet.type)) {
         setTimeout(() => refreshPanels(panelMessages, packet.server), 1000)
       }
     }
 
+    let isProcessingSSU = false
+
     ssuPacketHandler = async (ssuPacket) => {
-      if (!ssuPacketQueue.includes(ssuPacket.server)) {
-        ssuPacketQueue.push(ssuPacket.server)
+      if (ssuPacket?.server) {
+        ssuPacketQueue.add(ssuPacket.server)
       }
-      if (!ssuPacketHandling) {
-        ssuPacketHandling = setTimeout(async () => {
-          await refreshPanels(panelMessages, ssuPacketQueue)
-          ssuPacketQueue = []
-          ssuPacketHandling = null
-        }, 1000)
+
+      if (isProcessingSSU) {
+        return
       }
+      isProcessingSSU = true
+
+      ssuPacketHandling = setTimeout(async () => {
+        while (ssuPacketQueue.size > 0) {
+          const batch = Array.from(ssuPacketQueue)
+          ssuPacketQueue.clear()
+
+          for (const server of batch) {
+            await refreshPanels(panelMessages, server)
+          }
+        }
+
+        isProcessingSSU = false
+        ssuPacketHandling = null
+      }, 1000)
     }
 
     cacApi.events.on("packet", packetHandler)
     cacApi.events.on("serverStatusUpdate", ssuPacketHandler)
+
     initPanels().catch((err) => {
       if (cacConfig.logging.plugins) {
         console.log(`[${this.name}] Panel Init Error`, err)
