@@ -12,7 +12,7 @@ const { GameDig } = gamedig
 const { Client, GatewayIntentBits, REST, Routes, EmbedBuilder } = djs
 const { EventEmitter } = events
 
-const CACJSversion = "v1.4.4-sr (Server Status Update Process Orders)"
+const CACJSversion = "v1.4.6-rc (Stable Release)"
 const processId = process.pid.toString()
 const emitter = new EventEmitter()
 process.title = "CrossArkChat.js"
@@ -459,11 +459,12 @@ function createArkAgent(server) {
   let pollingChat = false
   let pollingPlayers = false
   let flushingCache = false
+  let ssuOfflinePacketSent = false
 
   let pollPlayersFailCount = 0
   let heartbeatFailCount = 0
   let disconnectCount = 0
-  let ssuPacket
+
   const gracePeriod = Number(config.ark.transferGracePeriod) || 30000
 
   let commandTimeout = Number(config.ark.commandTimeout) || 5000
@@ -548,35 +549,36 @@ function createArkAgent(server) {
     if (serverConnectable == false) {
       state = "DISCONNECTED"
       disconnectCount++
-      if (disconnectCount >= 1) {
-        if (disconnectCount == 1) {
-          let previousPlayers = cache[cacheKey].players
-          for (const player of previousPlayers) {
-            const timer = setTimeout(() => leaveCache.delete(player.steamId), gracePeriod)
+      if (disconnectCount >= 2) {
+        let previousPlayers = cache[cacheKey].players
+        for (const player of previousPlayers) {
+          const timer = setTimeout(() => leaveCache.delete(player.steamId), gracePeriod)
 
-            leaveCache.set(player.steamId, {
+          leaveCache.set(player.steamId, {
+            sessionStart: player.data?.sessionStart,
+            timer,
+          })
+
+          handlePacket({
+            id: `${server.name}-leave-${Date.now()}`,
+            origin: server.name,
+            type: "leave",
+            server: server.name,
+            player: player.name,
+            text: "normal",
+            source: "forced-offline",
+            metadata: {
+              forced: true,
+              steamId: player.steamId,
               sessionStart: player.data?.sessionStart,
-              timer,
-            })
+              cluster: server.data?.cluster || null,
+            },
+          })
+        }
+        cache[cacheKey].players = []
 
-            handlePacket({
-              id: `${server.name}-leave-${Date.now()}`,
-              origin: server.name,
-              type: "leave",
-              server: server.name,
-              player: player.name,
-              text: "normal",
-              source: "forced-offline",
-              metadata: {
-                forced: true,
-                steamId: player.steamId,
-                sessionStart: player.data?.sessionStart,
-                cluster: server.data?.cluster || null,
-              },
-            })
-          }
-          cache[cacheKey].players = []
-          ssuPacket = {
+        if (!ssuOfflinePacketSent) {
+          let ssuPacket = {
             server: server.name,
             oldStatus: "online",
             newStatus: "offline",
@@ -584,6 +586,7 @@ function createArkAgent(server) {
           }
 
           emitter.emit("serverStatusUpdate", ssuPacket)
+          ssuOfflinePacketSent = true
         }
       }
       scheduleReconnect()
@@ -602,13 +605,17 @@ function createArkAgent(server) {
       await rcon.connect()
 
       state = "CONNECTED"
-      ssuPacket = {
-        server: server.name,
-        oldStatus: "offline",
-        newStatus: "online",
-        serverConfig: server,
+      if (ssuOfflinePacketSent) {
+        let ssuPacket = {
+          server: server.name,
+          oldStatus: "offline",
+          newStatus: "online",
+          serverConfig: server,
+        }
+        emitter.emit("serverStatusUpdate", ssuPacket)
+        ssuOfflinePacketSent = false
       }
-      emitter.emit("serverStatusUpdate", ssuPacket)
+
       disconnectCount = 0
 
       if (config.logging.rconStatus) console.log(`[${server.name}] RCON Connected`)

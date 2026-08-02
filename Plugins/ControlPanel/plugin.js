@@ -9,7 +9,7 @@ let ssuPacketQueue = new Set()
 
 module.exports = {
   name: "Control Panel",
-  version: "v1.2.1",
+  version: "v1.6.3",
 
   async teardown(cacApi) {
     const client = cacApi.discord.getClient()
@@ -49,6 +49,8 @@ module.exports = {
       ContainerBuilder,
       LabelBuilder,
       CheckboxBuilder,
+      ChannelType,
+      PermissionFlagsBits,
     } = cacApi.utils.modules.djs
     const childProc = cacApi.utils.modules.child_process
 
@@ -61,7 +63,7 @@ module.exports = {
     if (!enabledServers.every((server) => server.data?.cluster && server.data?.controlPanel)) {
       let defaultServerData = {
         data: {
-          cluster: "Sinfuls RXP",
+          cluster: "clusterName",
           controlPanel: {
             startScript: "",
             stopScript: "",
@@ -83,6 +85,9 @@ module.exports = {
           {
             channel: "",
             cluster: true,
+            onlineEmoji: "",
+            offlineEmoji: "",
+            responseTTL: 15,
           },
           null,
           2,
@@ -91,12 +96,14 @@ module.exports = {
     }
 
     let loadConfig = () => JSON.parse(fs.readFileSync(configPath))
+    let pluginConfig = loadConfig()
 
     let loadPanelCache = () => {
-      let defaultPanelCache = { createdAt: "", messages: {} }
+      let defaultPanelCache = { createdAt: "", messages: {}, threads: {} }
       if (!fs.existsSync(panelsPath)) return defaultPanelCache
       try {
-        return JSON.parse(fs.readFileSync(panelsPath))
+        let cache = JSON.parse(fs.readFileSync(panelsPath))
+        return { ...defaultPanelCache, ...cache }
       } catch {
         return defaultPanelCache
       }
@@ -166,11 +173,17 @@ module.exports = {
       let updateTimestampFormatted = `<t:${Math.floor(Date.now() / 1000)}>`
 
       return new ContainerBuilder()
-        .addTextDisplayComponents((textDisplay) =>
-          textDisplay.setContent(`## ${isOnline ? "🟢" : "🔴"} ${server.data.cluster} - ${server.name}\n-# Updated: ${updateTimestampFormatted}`),
-        )
+        .addTextDisplayComponents((textDisplay) => {
+          let onlineEmoji = pluginConfig.onlineEmoji ? pluginConfig.onlineEmoji : "🟢"
+          let offlineEmoji = pluginConfig.offlineEmoji ? pluginConfig.offlineEmoji : "🔴"
+          return textDisplay.setContent(
+            `## ${isOnline ? onlineEmoji : offlineEmoji} ${server.data.cluster || "Unclustered"} - ${server.name}\n-# Updated: ${updateTimestampFormatted}`,
+          )
+        })
         .addSeparatorComponents((separator) => separator)
-        .addTextDisplayComponents((textDisplay) => textDisplay.setContent(isOnline ? getFormattedPlayerList(serverName) : "The server is currently offline."))
+        .addTextDisplayComponents((textDisplay) =>
+          textDisplay.setContent(isOnline ? getFormattedPlayerList(serverName) : `${server.name} Is Currently Offline.`),
+        )
         .addSeparatorComponents((separator) => separator)
         .addActionRowComponents((row) =>
           row.setComponents(
@@ -202,7 +215,10 @@ module.exports = {
       let updateTimestampFormatted = `<t:${Math.floor(Date.now() / 1000)}>`
 
       return new ContainerBuilder()
-        .addTextDisplayComponents((textDisplay) => textDisplay.setContent(`## ${clusterName} - Cluster Control\n-# Updated: ${updateTimestampFormatted}`))
+        .addTextDisplayComponents((textDisplay) => {
+          let clusterEmoji = pluginConfig.clusterEmoji ? `${pluginConfig.clusterEmoji} ` : ""
+          return textDisplay.setContent(`## ${clusterEmoji}${clusterName} - Cluster Control\n-# Updated: ${updateTimestampFormatted}`)
+        })
         .addSeparatorComponents((separator) => separator)
         .addTextDisplayComponents((textDisplay) =>
           textDisplay.setContent(`Total Players: **${totalPlayers}**\nOnline Servers: **${onlineServers.length}**/**${clusterServers.length}**`),
@@ -248,7 +264,7 @@ module.exports = {
         .setCustomId(`controlPanel;confirmAction;${action};${scope};${target}`)
         .setTitle(`Confirm: ${actionFormatted}`)
         .addLabelComponents(
-          new LabelBuilder().setLabel(`Confirm ${target}`).setCheckboxComponent(new CheckboxBuilder().setCustomId("confirmInput").setDefault(false)),
+          new LabelBuilder().setLabel(`Confirm: ${target}`).setCheckboxComponent(new CheckboxBuilder().setCustomId("confirmInput").setDefault(false)),
         )
     }
 
@@ -264,7 +280,7 @@ module.exports = {
           new LabelBuilder().setLabel("Player").setStringSelectMenuComponent(
             new StringSelectMenuBuilder()
               .setCustomId("player")
-              .setPlaceholder("Select a player")
+              .setPlaceholder("Select A Player")
               .addOptions(
                 players.slice(0, 25).map((player) => {
                   let label = player.data?.ign
@@ -284,7 +300,7 @@ module.exports = {
           new LabelBuilder()
             .setLabel("Steam ID")
             .setTextInputComponent(
-              new TextInputBuilder().setCustomId("player").setPlaceholder("Enter the player's Steam ID").setStyle(TextInputStyle.Short).setRequired(true),
+              new TextInputBuilder().setCustomId("player").setPlaceholder("Enter The Player's Steam Id").setStyle(TextInputStyle.Short).setRequired(true),
             ),
         )
       }
@@ -313,11 +329,23 @@ module.exports = {
     }
 
     let runScript = (command) => {
-      return new Promise((resolve, reject) => {
-        childProc.exec(command, (error, stdout, stderr) => {
-          if (error) return reject(error)
-          resolve({ stdout, stderr })
-        })
+      return new Promise((resolve) => {
+        try {
+          const isWin = process.platform === "win32"
+          const child = childProc.spawn(isWin ? "cmd.exe" : "/bin/sh", [isWin ? "/c" : "-c", command], {
+            detached: true,
+            stdio: "ignore",
+          })
+
+          child.on("error", (err) => {
+            resolve({ success: false, error: err.message })
+          })
+
+          child.unref()
+          resolve({ success: true })
+        } catch (error) {
+          resolve({ success: false, error: error.message })
+        }
       })
     }
 
@@ -349,7 +377,6 @@ module.exports = {
       }
     }
 
-    let pluginConfig = loadConfig()
     if (!pluginConfig.channel) {
       if (cacConfig.logging.plugins) {
         console.log(`[${this.name}] No Control Panel Channel Configured`)
@@ -367,50 +394,157 @@ module.exports = {
       return
     }
 
+    const isForumChannel = controlPanelChannel.type === ChannelType.GuildForum
+
     let panelCache = loadPanelCache()
     let panelMessages = {}
+
+    let sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+    let getChannelViewers = async () => {
+      try {
+        const guildMembers = await controlPanelChannel.guild.members.fetch()
+        return [...guildMembers.filter((member) => controlPanelChannel.permissionsFor(member)?.has(PermissionFlagsBits.ViewChannel)).values()]
+      } catch (error) {
+        if (cacConfig.logging.plugins) {
+          console.log(`[${this.name}] Failed To Fetch Channel Viewers`, error)
+        }
+        return []
+      }
+    }
+
+    let addViewersToThread = async (thread, viewers) => {
+      const batchSize = 50
+      const batchDelayMs = 500
+
+      let existingMemberIds = new Set()
+      try {
+        const existingMembers = await thread.members.fetch()
+        existingMemberIds = new Set(existingMembers.keys())
+      } catch (error) {
+        if (cacConfig.logging.plugins) {
+          console.log(`[${this.name}] Failed To Fetch Existing Thread Members For ${thread.id}`, error)
+        }
+      }
+
+      const newViewers = viewers.filter((member) => !existingMemberIds.has(member.id))
+      if (!newViewers.length) return
+
+      for (let i = 0; i < newViewers.length; i += batchSize) {
+        const batch = newViewers.slice(i, i + batchSize)
+        const mentionContent = batch.map((member) => `<@${member.id}>`).join(" ")
+
+        try {
+          const pingMessage = await thread.send({
+            content: mentionContent,
+            allowedMentions: { users: batch.map((member) => member.id) },
+          })
+          await pingMessage.delete().catch(() => {})
+        } catch (error) {
+          if (cacConfig.logging.plugins) {
+            console.log(`[${this.name}] Failed To Add Viewer Batch To Thread ${thread.id}`, error)
+          }
+        }
+
+        if (i + batchSize < newViewers.length) {
+          await sleep(batchDelayMs)
+        }
+      }
+    }
 
     let initPanels = async () => {
       let todayString = new Date().toLocaleDateString()
       let createdAtString = new Date(panelCache.createdAt).toLocaleDateString()
 
       if (createdAtString !== todayString) {
-        const deletePromises = Object.values(panelCache.messages || {}).map(async (messageId) => {
-          try {
-            const message = controlPanelChannel.messages.cache.get(messageId) || (await controlPanelChannel.messages.fetch(messageId))
-            await message.delete()
-          } catch {}
-        })
-        await Promise.all(deletePromises)
+        if (isForumChannel) {
+          const deleteThreadPromises = Object.values(panelCache.threads || {}).map(async (threadId) => {
+            try {
+              const thread = controlPanelChannel.threads.cache.get(threadId) || (await controlPanelChannel.threads.fetch(threadId))
+              await thread?.delete()
+            } catch {}
+          })
+          await Promise.all(deleteThreadPromises)
+        } else {
+          const deletePromises = Object.values(panelCache.messages || {}).map(async (messageId) => {
+            try {
+              const message = controlPanelChannel.messages.cache.get(messageId) || (await controlPanelChannel.messages.fetch(messageId))
+              await message.delete()
+            } catch {}
+          })
+          await Promise.all(deletePromises)
+        }
 
-        panelCache = { createdAt: Date.now(), messages: {} }
+        panelCache = { createdAt: Date.now(), messages: {}, threads: {} }
       }
 
-      const serverPromises = enabledServers.map(async (server) => {
-        const messageId = panelCache.messages[server.name]
-        let message = null
+      let clusters = getClusters()
+      let results = []
+      let channelViewers = isForumChannel ? await getChannelViewers() : []
 
-        if (messageId) {
-          try {
-            message = controlPanelChannel.messages.cache.get(messageId) || (await controlPanelChannel.messages.fetch(messageId))
-          } catch {}
+      for (let cluster of clusters) {
+        let clusterServers = getClusterServers(cluster)
+        let sendTarget = controlPanelChannel
+
+        if (isForumChannel) {
+          let thread = null
+          const threadId = panelCache.threads[cluster]
+
+          if (threadId) {
+            try {
+              thread = controlPanelChannel.threads.cache.get(threadId) || (await controlPanelChannel.threads.fetch(threadId))
+            } catch {}
+          }
+
+          if (!thread) {
+            thread = await controlPanelChannel.threads.create({
+              name: cluster,
+              message: pluginConfig.cluster ? { components: [createClusterEmbed(cluster)], flags: MessageFlags.IsComponentsV2 } : { content: `## ${cluster}` },
+            })
+            panelCache.threads[cluster] = thread.id
+          }
+
+          await addViewersToThread(thread, channelViewers)
+
+          sendTarget = thread
+
+          if (pluginConfig.cluster) {
+            const clusterKey = `cluster:${cluster}`
+            let message = null
+            try {
+              message = await thread.fetchStarterMessage()
+            } catch {}
+
+            if (message) {
+              panelCache.messages[clusterKey] = message.id
+              results.push({ key: clusterKey, message })
+            }
+          }
         }
 
-        if (!message) {
-          message = await controlPanelChannel.send({
-            components: [createServerEmbed(server.name)],
-            flags: MessageFlags.IsComponentsV2,
-          })
-          panelCache.messages[server.name] = message.id
+        for (let server of clusterServers) {
+          const messageId = panelCache.messages[server.name]
+          let message = null
+
+          if (messageId) {
+            try {
+              message = sendTarget.messages.cache.get(messageId) || (await sendTarget.messages.fetch(messageId))
+            } catch {}
+          }
+
+          if (!message) {
+            message = await sendTarget.send({
+              components: [createServerEmbed(server.name)],
+              flags: MessageFlags.IsComponentsV2,
+            })
+            panelCache.messages[server.name] = message.id
+          }
+
+          results.push({ key: server.name, message })
         }
 
-        return { key: server.name, message }
-      })
-
-      let clusterPromises = []
-      if (pluginConfig.cluster) {
-        clusterPromises = getClusters().map(async (clusterName) => {
-          const clusterKey = `cluster:${clusterName}`
+        if (!isForumChannel && pluginConfig.cluster) {
+          const clusterKey = `cluster:${cluster}`
           const messageId = panelCache.messages[clusterKey]
           let message = null
 
@@ -422,17 +556,16 @@ module.exports = {
 
           if (!message) {
             message = await controlPanelChannel.send({
-              components: [createClusterEmbed(clusterName)],
+              components: [createClusterEmbed(cluster)],
               flags: MessageFlags.IsComponentsV2,
             })
             panelCache.messages[clusterKey] = message.id
           }
 
-          return { key: clusterKey, message }
-        })
+          results.push({ key: clusterKey, message })
+        }
       }
 
-      const results = await Promise.all([...serverPromises, ...clusterPromises])
       results.forEach(({ key, message }) => {
         panelMessages[key] = message
       })
@@ -445,8 +578,25 @@ module.exports = {
       if (cacConfig.logging.plugins) console.log(`[${this.name}] Panels Ready`)
     }
 
+    let scheduleReplyDeletion = (interaction) => {
+      const delayMs = (pluginConfig.responseTTL ?? 15) * 1000
+      if (delayMs <= 0) return
+
+      setTimeout(async () => {
+        try {
+          await interaction.deleteReply()
+        } catch {}
+      }, delayMs)
+    }
+
     interactionHandler = async (interaction) => {
       if (!interaction.customId || !interaction.customId.startsWith("controlPanel;")) return
+      if (!(await cacApi.utils.isAdmin(interaction.user.id))) {
+        interaction.reply({
+          content: "No Permission To Use This",
+          flags: [MessageFlags.Ephemeral],
+        })
+      }
 
       let idParts = interaction.customId.split(";")
 
@@ -471,9 +621,10 @@ module.exports = {
           }
 
           case "refresh": {
-            await interaction.deferReply({ ephemeral: true })
+            await interaction.deferReply({ flags: [MessageFlags.Ephemeral] })
             let servers = scope === "cluster" ? getClusterServers(target).map((server) => server.name) : [target]
             await interaction.editReply(`Refreshing Panel${scope === "cluster" ? "s" : ""}`)
+            scheduleReplyDeletion(interaction)
             refreshPanels(panelMessages, servers)
             return
           }
@@ -483,7 +634,7 @@ module.exports = {
           case "rconModal": {
             let [, , scope, target] = idParts
             let command = interaction.fields.getTextInputValue("command")
-            await interaction.deferReply({ ephemeral: true })
+            await interaction.deferReply({ flags: [MessageFlags.Ephemeral] })
 
             if (scope === "cluster") {
               let results = await sendClusterRcon(target, command)
@@ -502,6 +653,7 @@ module.exports = {
                 .join("\n")
 
               await interaction.editReply(`RCON Command (${command}) Sent To Cluster **${target}**:\n\n${output}`)
+              scheduleReplyDeletion(interaction)
               return
             } else if (scope === "server") {
               let result = await sendRcon(target, command)
@@ -515,6 +667,7 @@ module.exports = {
               }\`\`\``
 
               await interaction.editReply(`RCON Command (${command}) Sent To Server **${target}**:\n\n${resultText}`)
+              scheduleReplyDeletion(interaction)
               return
             }
             break
@@ -533,7 +686,7 @@ module.exports = {
             let steamId = selectValues.length ? selectValues[0] : interaction.fields.getTextInputValue("player").trim()
             let label = `Steam Id **${steamId}**`
 
-            await interaction.deferReply({ ephemeral: true })
+            await interaction.deferReply({ flags: [MessageFlags.Ephemeral] })
 
             let actionFormatted = action === "kick" ? "Kicking" : "Banning"
             let command = `${action}Player ${steamId}`
@@ -555,6 +708,7 @@ module.exports = {
                 .join("\n")
 
               await interaction.editReply(`Attempted **${actionFormatted}** ${label} From The **${target}** Cluster\n\n${output}`)
+              scheduleReplyDeletion(interaction)
               return
             } else if (scope === "server") {
               const result = await sendRcon(target, command)
@@ -568,6 +722,7 @@ module.exports = {
               }\`\`\``
 
               await interaction.editReply(`Attempted **${actionFormatted}** ${label} From **${target}**\n\n${resultText}`)
+              scheduleReplyDeletion(interaction)
               return
             }
             break
@@ -578,11 +733,12 @@ module.exports = {
             let isConfirmed = interaction.fields.getCheckbox("confirmInput")
 
             if (!isConfirmed) {
-              await interaction.reply({ content: "❎ Action Cancelled, Check The Confirmation Box.", ephemeral: true })
+              await interaction.reply({ content: "❎ Action Cancelled, Check The Confirmation Box.", flags: [MessageFlags.Ephemeral] })
+              scheduleReplyDeletion(interaction)
               return
             }
 
-            await interaction.deferReply({ ephemeral: true })
+            await interaction.deferReply({ flags: [MessageFlags.Ephemeral] })
 
             let actionFormatted = action === "commandStop" ? "Stop Command" : String(action).charAt(0).toUpperCase() + action.slice(1).toLowerCase()
             let servers = scope === "cluster" ? getClusterServers(target).map((server) => server.name) : [target]
@@ -598,8 +754,12 @@ module.exports = {
                     throw new Error(`No ${scriptKey} Configured For ${serverName}`)
                   }
 
-                  await runScript(execCommand)
-                  results.push(`✅ **${serverName}** ${actionFormatted} Success`)
+                  let result = await runScript(execCommand)
+                  if (result.success) {
+                    results.push(`✅ **${serverName}** ${actionFormatted} Success`)
+                  } else {
+                    results.push(`❎ **${serverName}** ${actionFormatted} Failed - ${result.error}`)
+                  }
                 } catch (error) {
                   results.push(`❎ **${serverName}** ${actionFormatted} Failed - ${error.message}`)
                 }
@@ -626,6 +786,7 @@ module.exports = {
             }
 
             await interaction.editReply(`Executed ${actionFormatted}:\n\n${results.join("\n")}`)
+            scheduleReplyDeletion(interaction)
             return
           }
         }

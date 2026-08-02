@@ -66,9 +66,9 @@ Edit your:
 - Text replacements
 - Discord bot settings
 
-If you're unsure how to configure it, see:
+If you're unsure how to configure it, see the comments in:
 
-https://github.com/slothyacedia/CrossArkChat/blob/main/CrossArkChat/config_explained.js
+https://github.com/slothyacedia/CrossArkChat/blob/main/CrossArkChat/config.js
 
 ---
 
