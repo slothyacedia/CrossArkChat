@@ -6,7 +6,12 @@
 This directory contains AseApi plugin dependencies that CrossArkChat.js uses for plugins.<br>
 
 ## Usages
+
 PlayerInfo - MorePlayerInfo
+
+## External Sources
+
+[Sinful Plugins](https://github.com/sinful-plugins/aseapi-plugins)
 
 ## Credits
 

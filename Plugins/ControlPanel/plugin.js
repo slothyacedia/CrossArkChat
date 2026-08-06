@@ -9,7 +9,7 @@ let ssuPacketQueue = new Set()
 
 module.exports = {
   name: "Control Panel",
-  version: "v1.6.3",
+  version: "v1.7.3",
 
   async teardown(cacApi) {
     const client = cacApi.discord.getClient()
@@ -85,9 +85,10 @@ module.exports = {
           {
             channel: "",
             cluster: true,
+            deleteResponsesAfter: 15,
             onlineEmoji: "",
             offlineEmoji: "",
-            responseTTL: 15,
+            clusterEmoji: "",
           },
           null,
           2,
@@ -579,7 +580,7 @@ module.exports = {
     }
 
     let scheduleReplyDeletion = (interaction) => {
-      const delayMs = (pluginConfig.responseTTL ?? 15) * 1000
+      const delayMs = (pluginConfig.deleteResponsesAfter ?? 15) * 1000
       if (delayMs <= 0) return
 
       setTimeout(async () => {
